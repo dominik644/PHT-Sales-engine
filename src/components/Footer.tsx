@@ -1,0 +1,18 @@
+import Link from "next/link";
+
+export function Footer() {
+  return (
+    <footer className="site-footer">
+      <div className="site-footer__inner">
+        <div>
+          <p className="brand__mark brand__mark--small">PHT</p>
+          <p className="muted">Curated goods. Clear pricing. Fast dispatch.</p>
+        </div>
+        <div className="site-footer__links">
+          <Link href="/shop">Shop all</Link>
+          <Link href="/checkout">Checkout</Link>
+        </div>
+      </div>
+    </footer>
+  );
+}
