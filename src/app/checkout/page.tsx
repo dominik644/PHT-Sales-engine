@@ -5,12 +5,40 @@ import { useState, type FormEvent } from "react";
 import { formatPrice } from "@/lib/products";
 import { useCart } from "@/context/CartContext";
 
+type FormState = {
+  name: string;
+  email: string;
+  address: string;
+  city: string;
+  postal: string;
+};
+
+const emptyForm: FormState = {
+  name: "",
+  email: "",
+  address: "",
+  city: "",
+  postal: "",
+};
+
 export default function CheckoutPage() {
   const { lines, subtotal, clearCart, itemCount } = useCart();
   const [placed, setPlaced] = useState(false);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [error, setError] = useState<string | null>(null);
+
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setError(null);
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const missing = Object.entries(form).find(([, value]) => !value.trim());
+    if (missing) {
+      setError("Please complete all shipping fields before placing the order.");
+      return;
+    }
     setPlaced(true);
     clearCart();
   }
@@ -54,12 +82,18 @@ export default function CheckoutPage() {
         </div>
       ) : (
         <div className="checkout">
-          <form className="panel" onSubmit={handleSubmit}>
+          <form className="panel" onSubmit={handleSubmit} noValidate>
             <h2>Shipping</h2>
             <div className="form-grid">
               <label>
                 Full name
-                <input name="name" required autoComplete="name" />
+                <input
+                  name="name"
+                  required
+                  autoComplete="name"
+                  value={form.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                />
               </label>
               <label>
                 Email
@@ -68,20 +102,41 @@ export default function CheckoutPage() {
                   type="email"
                   required
                   autoComplete="email"
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
                 />
               </label>
               <label>
                 Address
-                <input name="address" required autoComplete="street-address" />
+                <input
+                  name="address"
+                  required
+                  autoComplete="street-address"
+                  value={form.address}
+                  onChange={(e) => updateField("address", e.target.value)}
+                />
               </label>
               <label>
                 City
-                <input name="city" required autoComplete="address-level2" />
+                <input
+                  name="city"
+                  required
+                  autoComplete="address-level2"
+                  value={form.city}
+                  onChange={(e) => updateField("city", e.target.value)}
+                />
               </label>
               <label>
                 Postal code
-                <input name="postal" required autoComplete="postal-code" />
+                <input
+                  name="postal"
+                  required
+                  autoComplete="postal-code"
+                  value={form.postal}
+                  onChange={(e) => updateField("postal", e.target.value)}
+                />
               </label>
+              {error ? <p className="form-error">{error}</p> : null}
               <button type="submit" className="btn btn--primary btn--block">
                 Place order · {formatPrice(subtotal)}
               </button>

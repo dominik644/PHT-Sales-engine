@@ -22,11 +22,13 @@ export function CartDrawer() {
         className={`cart-scrim ${isOpen ? "is-open" : ""}`}
         onClick={closeCart}
         aria-hidden={!isOpen}
+        hidden={!isOpen}
       />
       <aside
         className={`cart-drawer ${isOpen ? "is-open" : ""}`}
         aria-hidden={!isOpen}
         aria-label="Shopping cart"
+        inert={!isOpen ? true : undefined}
       >
         <div className="cart-drawer__head">
           <h2>Your cart</h2>
