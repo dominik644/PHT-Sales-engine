@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Ensure seeded SQLite ships with every serverless function (demo on Vercel).
+  outputFileTracingIncludes: {
+    "/**": ["./data/demo.db"],
+  },
 };
 
 export default nextConfig;
