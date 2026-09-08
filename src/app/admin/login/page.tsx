@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
     <div className="admin-shell">
       <form className="panel admin-login" onSubmit={onSubmit}>
         <p className="eyebrow">Admin</p>
-        <h1>PHT Sales Engine</h1>
+        <h1>PHT Webshop Admin</h1>
         <p className="muted">Sign in to manage catalog, orders, and ERP sync.</p>
         <label>
           Password

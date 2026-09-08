@@ -29,7 +29,7 @@ export function Header() {
       <div className="site-header__inner">
         <Link href="/" className="brand" aria-label="PHT home">
           <span className="brand__mark">PHT</span>
-          <span className="brand__sub">B2B Sales Engine</span>
+          <span className="brand__sub">B2B Webshop</span>
         </Link>
 
         <nav className="site-nav" aria-label="Primary">

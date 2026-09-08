@@ -1,8 +1,11 @@
-# PHT Sales Engine — B2B
+# PHT Webshop (B2B)
 
-Sicherer B2B-Webshop mit Firmenregistrierung, Freigabe-Workflow
-(Produktionsleiter → Einkauf), Rabatten mit Laufzeit und ERP-Erstellung von
-Auftrag + Rechnung.
+Eigenständiger B2B-Webshop — **kein Modul und keine Abhängigkeit vom PHT Mastertool**.
+
+Eigene App, eigene Datenbank, eigener Admin, eigener Deploy. Es gibt keine gemeinsame
+Auth, keine geteilten Packages und keine Runtime-Kopplung zum Mastertool
+(`pht-mastertool`). Anbindung nach außen nur über den konfigurierbaren ERP-Adapter
+(Auftrag + Rechnung).
 
 ## Features
 

@@ -18,7 +18,7 @@ export default async function ShopPage() {
     <>
       <StoreHero
         headline="Goods that earn their place."
-        support="B2B Sales Engine: Registrierung, Freigaben (Produktionsleiter → Einkauf), Rabatte mit Laufzeit — Aufträge und Rechnungen entstehen im ERP."
+        support="Eigenständiger B2B-Webshop: Registrierung, Freigaben (Produktionsleiter → Einkauf), Rabatte mit Laufzeit — Aufträge und Rechnungen entstehen im ERP."
         primaryHref="/shop"
         primaryLabel="Shop the collection"
         secondaryHref={first ? `/product/${first.slug}` : "/register"}

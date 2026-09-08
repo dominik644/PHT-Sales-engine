@@ -20,11 +20,11 @@ const body = Figtree({
 
 export const metadata: Metadata = {
   title: {
-    default: "PHT — Sales Engine",
-    template: "%s · PHT",
+    default: "PHT Webshop",
+    template: "%s · PHT Webshop",
   },
   description:
-    "PHT Sales Engine — a curated webshop for lighting, audio, furniture, and home tech.",
+    "PHT Webshop — eigenständiger B2B-Shop für Beleuchtung, Audio, Möbel und Home Tech.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

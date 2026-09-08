@@ -15,7 +15,7 @@ export default async function HomePage() {
     <>
       <StoreHero
         headline="Goods that earn their place."
-        support="B2B Sales Engine: Registrierung, Freigaben (Produktionsleiter → Einkauf), Rabatte mit Laufzeit — Aufträge und Rechnungen entstehen im ERP."
+        support="Eigenständiger B2B-Webshop: Registrierung, Freigaben (Produktionsleiter → Einkauf), Rabatte mit Laufzeit — Aufträge und Rechnungen entstehen im ERP."
         secondaryHref={first ? `/product/${first.slug}` : undefined}
         secondaryLabel={first ? `View ${first.name}` : undefined}
       />
