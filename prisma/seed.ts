@@ -2,126 +2,199 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-/** PHT Hygiene — B2B Fachsortiment (Hygienetechnik & Verbrauchsmaterial) */
+/**
+ * Demo catalog aligned to pht.group pillars:
+ * Personalhygiene · Betriebshygiene · Prozesstechnik · Service
+ * Images from the live PHT homepage (copied into /public/shop).
+ */
 const products = [
+  // —— Personalhygiene ——
   {
-    erpId: "ERP-PHT-01",
-    sku: "PHT-WASHX-PRO",
-    slug: "handwaschbecken-washx-pro",
-    name: "Handwaschbecken WashX Pro",
+    erpId: "ERP-PHT-PH-01",
+    sku: "PHT-SCHLEUSE-ENTRY",
+    slug: "hygieneschleuse-entry",
+    name: "Hygieneschleuse Entry",
     category: "Personalhygiene",
-    tagline: "Sensor-Handwaschbecken für hygienesensible Bereiche.",
+    tagline: "Hygieneschleusen — Zutritt mit Hygiene-Freigabe.",
     description:
-      "Edelstahl-Handwaschbecken mit berührungsloser Armatur, Seifen- und Desinfektionsdosierung. Für Lebensmittelproduktion, Pharma und Gemeinschaftsverpflegung.",
-    priceCents: 189000,
-    imageUrl:
-      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=80",
-    accent: "#1B2A34",
-    stock: 24,
-  },
-  {
-    erpId: "ERP-PHT-02",
-    sku: "PHT-ENTRYX",
-    slug: "zutrittskontrolle-entryx",
-    name: "Zutrittskontrolle EntryX",
-    category: "Zutritt",
-    tagline: "Personalschleuse mit Hygiene-Freigabe.",
-    description:
-      "Zutrittssystem mit Hand- und Sohlendesinfektionsprüfung vor Produktionsfreigabe. Protokollierbar, anbindbar an bestehende Zugangssysteme.",
+      "Personalschleuse mit Hand- und Sohlendesinfektionsprüfung vor Produktionsfreigabe. Für Lebensmittelproduktion nach IFS, BRC und FSSC 22000.",
     priceCents: 649000,
-    imageUrl:
-      "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=1400&q=80",
-    accent: "#24353F",
-    stock: 8,
+    imageUrl: "/shop/einlasskontrolle.webp",
+    accent: "#17417D",
+    stock: 6,
   },
   {
-    erpId: "ERP-PHT-03",
-    sku: "PHT-HELIX",
-    slug: "sohlenreinigung-helix",
-    name: "Sohlenreinigung HeliX",
-    category: "Sohlenhygiene",
-    tagline: "Automatische Sohlenwaschung am Eingang.",
+    erpId: "ERP-PHT-PH-02",
+    sku: "PHT-HYGIENETECHNIK",
+    slug: "hygienetechnik-station",
+    name: "Hygienetechnik-Station",
+    category: "Personalhygiene",
+    tagline: "Hygienetechnik — Waschen, Desinfizieren, Trocknen.",
     description:
-      "Kompakte Sohlenreinigungsanlage für hohe Frequenz. Edelstahlgehäuse, Bürstenwechsel ohne Werkzeug, geeignet für Nassbereiche.",
-    priceCents: 428000,
-    imageUrl:
-      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1400&q=80",
-    accent: "#2C3E48",
-    stock: 12,
+      "Kompakte Personalhygiene-Station aus Edelstahl: berührungslose Armatur, Seifen- und Desinfektionsdosierung für hygienesensible Bereiche.",
+    priceCents: 189000,
+    imageUrl: "/shop/hygienetechnik.webp",
+    accent: "#17417D",
+    stock: 18,
   },
   {
-    erpId: "ERP-PHT-04",
-    sku: "PHT-DES-5L",
-    slug: "flaechendesinfektion-5l",
-    name: "Flächendesinfektion 5 l",
-    category: "Desinfektion",
-    tagline: "Gebrauchsfertig für Produktionsflächen.",
+    erpId: "ERP-PHT-PH-03",
+    sku: "PHT-SOZIALRAUM",
+    slug: "sozialraumausstattung",
+    name: "Sozialraumausstattung Set",
+    category: "Personalhygiene",
+    tagline: "Sozialraumausstattung — hygienisch durchdacht.",
     description:
-      "Alkoholbasierte Flächendesinfektion für Edelstahl und glatte Oberflächen. Gebinde 5 Liter, mit Sicherheitsdatenblatt und Anwendungshinweis.",
-    priceCents: 4890,
-    imageUrl:
-      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1400&q=80",
-    accent: "#33424A",
-    stock: 320,
+      "Ausstattungspaket für Umkleide und Sozialräume: Spender, Handwaschplätze und Leitsystem für getrennte Schwarz-/Weißbereiche.",
+    priceCents: 98000,
+    imageUrl: "/shop/personal-card.webp",
+    accent: "#17417D",
+    stock: 22,
   },
   {
-    erpId: "ERP-PHT-05",
+    erpId: "ERP-PHT-PH-04",
     sku: "PHT-HAND-1L",
     slug: "haendedesinfektion-1l",
     name: "Händedesinfektion 1 l",
-    category: "Desinfektion",
-    tagline: "Für Spendersysteme und Nachfüllung.",
+    category: "Personalhygiene",
+    tagline: "Hygienetechnik — Nachfüllung für Spendersysteme.",
     description:
-      "Viruzides Händedesinfektionsmittel für Nachfüllung in PHT-Spendern. DIN-EN-geprüft, hautverträglich mit Rückfetter.",
+      "Viruzides Händedesinfektionsmittel für PHT-Spender. DIN-EN-geprüft, hautverträglich mit Rückfetter.",
     priceCents: 1290,
-    imageUrl:
-      "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=1400&q=80",
-    accent: "#1F3038",
+    imageUrl: "/shop/hero-personalhygiene.webp",
+    accent: "#17417D",
     stock: 800,
   },
+
+  // —— Betriebshygiene ——
   {
-    erpId: "ERP-PHT-06",
-    sku: "PHT-PAPER-TOWEL",
-    slug: "papierhandtuecher-z-falz",
-    name: "Papierhandtücher Z-Falz",
-    category: "Verbrauchsmaterial",
-    tagline: "Karton à 3.200 Blatt für Spender.",
+    erpId: "ERP-PHT-BH-01",
+    sku: "PHT-NORMWAGEN",
+    slug: "normwagen",
+    name: "Normwagen Edelstahl",
+    category: "Betriebshygiene",
+    tagline: "Betriebseinrichtung — robust für den Nassbereich.",
     description:
-      "2-lagige Papierhandtücher, Z-Falz, hohe Saugkraft. Passend für gängige Spendersysteme in Hygienezonen und Sozialräumen.",
-    priceCents: 3490,
-    imageUrl:
-      "https://images.unsplash.com/photo-1584622781564-1d987f7333c1?auto=format&fit=crop&w=1400&q=80",
-    accent: "#2A3840",
-    stock: 450,
+      "Edelstahl-Normwagen für Transport und Zwischenlagerung in der Lebensmittelproduktion. Hygienisch, stapelbar, leicht zu reinigen.",
+    priceCents: 245000,
+    imageUrl: "/shop/normwagen.webp",
+    accent: "#17417D",
+    stock: 14,
   },
   {
-    erpId: "ERP-PHT-07",
-    sku: "PHT-FOAM-CLEAN",
-    slug: "schaumreiniger-green",
-    name: "Schaumreiniger Green",
-    category: "Reinigung",
-    tagline: "Wasser- und energiesparende Schaumreinigung.",
+    erpId: "ERP-PHT-BH-02",
+    sku: "PHT-SCHAUM-ND",
+    slug: "niederdruck-schaumreinigung",
+    name: "Niederdruck-Schaumreinigung",
+    category: "Betriebshygiene",
+    tagline: "Niederdruck-Schaumreinigung — Wasser und Energie sparen.",
     description:
-      "Schaumreiniger für Anlagen und Böden in der Lebensmittelindustrie. Dosierbar, materialschonend, mit optionalem GREEN-Button-Modul kompatibel.",
-    priceCents: 7890,
-    imageUrl:
-      "https://images.unsplash.com/photo-1563453392212-326f5e854473?auto=format&fit=crop&w=1400&q=80",
-    accent: "#3A464C",
-    stock: 160,
+      "Schaumreinigungssystem für Anlagen und Böden. Materialschonend, dosierbar, ausgelegt für den Dauerbetrieb in der Lebensmittelindustrie.",
+    priceCents: 128000,
+    imageUrl: "/shop/hero-betriebshygiene.webp",
+    accent: "#17417D",
+    stock: 9,
   },
   {
-    erpId: "ERP-PHT-08",
-    sku: "PHT-SERVICE-HYG",
-    slug: "hygiene-wartungsvertrag",
-    name: "Hygiene-Wartungsvertrag",
+    erpId: "ERP-PHT-BH-03",
+    sku: "PHT-BEHAELTER",
+    slug: "behaelterreinigung",
+    name: "Behälterreinigungssystem",
+    category: "Betriebshygiene",
+    tagline: "Behälterreinigung — sauber, dokumentierbar, effizient.",
+    description:
+      "Anlage zur Innen- und Außenreinigung von Behältern und Transportgebinden. Reduziert manuelle Reinigungszeiten und Absicherungsrisiken.",
+    priceCents: 890000,
+    imageUrl: "/shop/hero-betriebshygiene.webp",
+    accent: "#17417D",
+    stock: 4,
+  },
+  {
+    erpId: "ERP-PHT-BH-04",
+    sku: "PHT-FARBSYSTEM",
+    slug: "reinigungsbedarf-farbsystem",
+    name: "Reinigungsbedarf Farbsystem",
+    category: "Betriebshygiene",
+    tagline: "Reinigungsbedarf nach Farbsystem — Zonen klar trennen.",
+    description:
+      "Farbcodiertes Reinigungs-Set für Produktionszonen. Verhindert Kreuzkontamination zwischen Allergen-, Roh- und Reinbereichen.",
+    priceCents: 18900,
+    imageUrl: "/shop/hygienetechnik.webp",
+    accent: "#17417D",
+    stock: 120,
+  },
+
+  // —— Prozesstechnik ——
+  {
+    erpId: "ERP-PHT-PT-01",
+    sku: "PHT-PORTION",
+    slug: "portioniersystem",
+    name: "Portioniersystem",
+    category: "Prozesstechnik",
+    tagline: "Portioniersysteme — präzise, hygienisch, produktiv.",
+    description:
+      "Portioniereinheit für gleichmäßige Produktmengen bei hoher Taktzahl. Edelstahlausführung, leicht zu reinigen, in Linien integrierbar.",
+    priceCents: 1250000,
+    imageUrl: "/shop/hero-prozesstechnik.webp",
+    accent: "#17417D",
+    stock: 3,
+  },
+  {
+    erpId: "ERP-PHT-PT-02",
+    sku: "PHT-HEBE-KIPP",
+    slug: "hebe-kipploesung",
+    name: "Hebe-Kipplösung",
+    category: "Prozesstechnik",
+    tagline: "Hebe-Kipplösungen — ergonomisch und sicher.",
+    description:
+      "Hebe-Kippgerät für Behälter und Gebinde. Entlastet Personal, reduziert Unfallrisiko und hält den Produktfluss stabil.",
+    priceCents: 980000,
+    imageUrl: "/shop/hero-prozesstechnik.webp",
+    accent: "#17417D",
+    stock: 5,
+  },
+  {
+    erpId: "ERP-PHT-PT-03",
+    sku: "PHT-FOERDER",
+    slug: "foerdertechnik",
+    name: "Fördertechnik Modul",
+    category: "Prozesstechnik",
+    tagline: "Fördertechnik — Verbindung für Ihre Linie.",
+    description:
+      "Modulares Fördersystem für hygienesensible Produktion. Kurze Rüstzeiten, klare Zugänglichkeit für Reinigung und Wartung.",
+    priceCents: 760000,
+    imageUrl: "/shop/hero-prozesstechnik.webp",
+    accent: "#17417D",
+    stock: 7,
+  },
+
+  // —— Service ——
+  {
+    erpId: "ERP-PHT-SV-01",
+    sku: "PHT-WARTUNG-12",
+    slug: "wartungsvereinbarung-12",
+    name: "Wartungsvereinbarung 12 Monate",
     category: "Service",
-    tagline: "Inspektion und Ersatzteil-Support 12 Monate.",
+    tagline: "Wartung — langfristige Funktionsfähigkeit.",
     description:
-      "Jährliche Prüfung von WashX/EntryX/HeliX, Verbrauchsmaterial-Empfehlung und priorisierter Support für Partnerbetriebe.",
+      "Jährliche Inspektion Ihrer PHT-Systeme, priorisierter Support und Ersatzteil-Empfehlung. Damit Ihr Betrieb jeden Tag läuft.",
     priceCents: 129000,
-    imageUrl:
-      "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1400&q=80",
-    accent: "#243038",
+    imageUrl: "/shop/hygienetechnik.webp",
+    accent: "#DD0B30",
+    stock: 999,
+  },
+  {
+    erpId: "ERP-PHT-SV-02",
+    sku: "PHT-KUNDENDIENST",
+    slug: "kundendienst-einsatz",
+    name: "Kundendienst-Einsatz",
+    category: "Service",
+    tagline: "Kundendienst — vor Ort, wenn es drauf ankommt.",
+    description:
+      "Techniker-Einsatz für Störung, Nachrüstung oder Einweisung. Koordiniert über die PHT-Servicehotline Ihrer Region.",
+    priceCents: 89000,
+    imageUrl: "/shop/einlasskontrolle.webp",
+    accent: "#DD0B30",
     stock: 999,
   },
 ];
@@ -283,7 +356,7 @@ async function main() {
   await prisma.discount.upsert({
     where: { code: "PHT-B2B-10" },
     update: {
-      name: "PHT Hygiene Partner 10 %",
+      name: "PHT Partner 10 %",
       type: "percent",
       percentOff: 10,
       amountOffCents: null,
@@ -294,7 +367,7 @@ async function main() {
     },
     create: {
       code: "PHT-B2B-10",
-      name: "PHT Hygiene Partner 10 %",
+      name: "PHT Partner 10 %",
       type: "percent",
       percentOff: 10,
       amountOffCents: null,
@@ -305,12 +378,18 @@ async function main() {
     },
   });
 
-  const wash = await prisma.product.findUnique({ where: { sku: "PHT-WASHX-PRO" } });
-  const des = await prisma.product.findUnique({ where: { sku: "PHT-DES-5L" } });
+  const entry = await prisma.product.findUnique({
+    where: { sku: "PHT-SCHLEUSE-ENTRY" },
+  });
+  const foam = await prisma.product.findUnique({
+    where: { sku: "PHT-SCHAUM-ND" },
+  });
 
   const { writeFile, mkdir } = await import("node:fs/promises");
   const path = await import("node:path");
-  await mkdir(path.join(process.cwd(), "public", "datasheets"), { recursive: true });
+  await mkdir(path.join(process.cwd(), "public", "datasheets"), {
+    recursive: true,
+  });
 
   async function writeSheet(
     productId: string,
@@ -352,24 +431,24 @@ async function main() {
     });
   }
 
-  if (wash) {
-    await writeSheet(wash.id, wash.sku, "Technisches Datenblatt", [
-      "PHT Hygiene - Technisches Datenblatt",
-      `SKU: ${wash.sku}`,
-      "Handwaschbecken WashX Pro",
-      "Edelstahl | Sensorarmatur | Dosierung",
+  if (entry) {
+    await writeSheet(entry.id, entry.sku, "Technisches Datenblatt", [
+      "PHT Group - Technisches Datenblatt",
+      `SKU: ${entry.sku}`,
+      "Hygieneschleuse Entry",
+      "Personalhygiene | Zutritt mit Hygiene-Freigabe",
     ]);
   }
-  if (des) {
-    await writeSheet(des.id, des.sku, "Sicherheitsdatenblatt", [
-      "PHT Hygiene - Sicherheitsdatenblatt",
-      `SKU: ${des.sku}`,
-      "Flaechendesinfektion 5 l",
-      "Alkoholbasiert | Gebrauchsfertig",
+  if (foam) {
+    await writeSheet(foam.id, foam.sku, "Technisches Datenblatt", [
+      "PHT Group - Technisches Datenblatt",
+      `SKU: ${foam.sku}`,
+      "Niederdruck-Schaumreinigung",
+      "Betriebshygiene | Schaumreinigungssystem",
     ]);
   }
 
-  console.log("Seeded PHT Hygiene catalog + B2B demo company");
+  console.log("Seeded PHT Group catalog (Personal-/Betriebs-/Prozesstechnik + Service)");
   console.log("Discount code: PHT-B2B-10 (10%, 90 days)");
 }
 

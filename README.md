@@ -27,18 +27,21 @@ Env in Vercel (bereits gesetzt):
 
 
 
-## Shop-Struktur (Demo)
+## Shop-Struktur (Demo — wie pht.group)
 
 ```
 Start (/)
-├── Sortiment (/shop)          Suche · Kategorien · Sortierung
-├── Artikel (/product/[slug])  Menge · Warenkorb · Datenblatt
-├── Warenkorb (/warenkorb)     Positionen prüfen
-├── Kasse (/checkout)          Adresse · Zahlungsbedingung · Rabatt
-└── Mein Konto (/account)      Freigaben · Aufträge
+├── Hygienelösungen (/shop)
+│   ├── Personalhygiene      Hygieneschleusen · Hygienetechnik · Sozialraum
+│   ├── Betriebshygiene      Behälter · Schaum · Farbsystem · Einrichtung
+│   ├── Prozesstechnik       Portionieren · Heben/Kippen · Fördern
+│   └── Service              Wartung · Kundendienst
+├── Artikel (/product/[slug])
+├── Warenkorb (/warenkorb)
+├── Kasse (/checkout)
+└── Mein Konto (/account)
 
-Admin (/admin)                 nur intern (nicht in Kunden-Navigation)
-ERP                            mock | rest | business-central
+Design: Farben, Logo und Bilder von pht.group (Blau #17417D, Rot #DD0B30)
 ```
 
 ## Demo starten

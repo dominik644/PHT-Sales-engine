@@ -3,21 +3,21 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Demo-Leitfaden",
-  description: "Struktur und Ablauf der PHT Hygiene Demo-Version.",
+  description: "Struktur und Ablauf der PHT Group Demo-Version.",
 };
 
 const steps = [
   {
     n: "01",
-    title: "Sortiment finden",
+    title: "Hygienelösung wählen",
     href: "/shop",
-    text: "Suche oder Kategorie wählen — wie in einem Fachshop.",
+    text: "Wie auf pht.group: Personalhygiene, Betriebshygiene, Prozesstechnik oder Service.",
   },
   {
     n: "02",
-    title: "Artikel prüfen",
+    title: "Unterbereich & Artikel",
     href: "/shop?category=Personalhygiene",
-    text: "Art.-Nr., Bestand, Datenblatt, Menge, In den Warenkorb.",
+    text: "z. B. Hygieneschleusen — Art.-Nr., Bestand, Datenblatt, In den Warenkorb.",
   },
   {
     n: "03",
@@ -43,13 +43,14 @@ export default function DemoPage() {
   return (
     <div className="demo-page">
       <header className="demo-page__head">
-        <p className="eyebrow">PHT Hygiene</p>
+        <p className="eyebrow">PHT Group</p>
         <h1>Demo-Leitfaden</h1>
         <p className="muted">
-          Ziel dieser Version: die <strong>Struktur</strong> und den Bestellablauf
-          absichern. Live erst, wenn dieser Weg stimmt.
+          Ziel dieser Version: die <strong>Struktur</strong> (wie pht.group) und den
+          Bestellablauf absichern. Live erst, wenn dieser Weg stimmt.
         </p>
       </header>
+
 
       <ol className="demo-steps">
         {steps.map((step) => (

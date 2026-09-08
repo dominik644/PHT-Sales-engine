@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #12202b;
-  --ink-soft: #3a4d5c;
-  --fog: #e6ecef;
-  --paper: #f3f6f8;
-  --mint: #e8a54b;
-  --mint-deep: #b8741f;
-  --line: rgba(18, 32, 43, 0.12);
-  --shadow: 0 18px 40px rgba(18, 32, 43, 0.12);
+  /* PHT Group corporate (pht.group) */
+  --ink: #040404;
+  --ink-soft: #54595f;
+  --fog: #e8ebee;
+  --paper: #f1f3f5;
+  --mint: #dd0b30;
+  --mint-deep: #e30613;
+  --pht-blue: #17417d;
+  --line: rgba(4, 4, 4, 0.12);
+  --shadow: 0 18px 40px rgba(4, 4, 4, 0.12);
   --radius: 0;
-  --header-h: 7.5rem;
+  --header-h: 6.5rem;
 }
 
 @theme inline {
@@ -31,10 +33,13 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  color: var(--ink);
-  background:
-    linear-gradient(180deg, #eef3f6 0%, var(--paper) 35%, #e9eef2 100%);
-  font-family: var(--font-body), system-ui, sans-serif;
+  color: var(--ink-soft);
+  background: var(--paper);
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, Arial, sans-serif;
+  font-size: clamp(16px, 1rem + 0.3vw, 18px);
+  line-height: 1.6;
+  font-weight: 400;
   text-rendering: optimizeLegibility;
 }
 
@@ -66,16 +71,22 @@ select {
 
 .brand {
   display: inline-flex;
-  flex-direction: column;
-  gap: 0.1rem;
+  align-items: center;
   line-height: 1;
 }
 
+.brand__logo {
+  width: auto;
+  height: 2.25rem;
+  object-fit: contain;
+}
+
 .brand__mark {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-display), serif;
   font-size: 1.55rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--pht-blue);
 }
 
 .brand__mark--small {
@@ -94,7 +105,7 @@ select {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(243, 246, 248, 0.96);
+  background: rgba(255, 255, 255, 0.97);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(10px);
 }
@@ -102,22 +113,25 @@ select {
 .site-header__inner {
   max-width: 1240px;
   margin: 0 auto;
-  min-height: 4.25rem;
+  min-height: 4.5rem;
   padding: 0.75rem 1.25rem;
   display: grid;
-  grid-template-columns: auto minmax(220px, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 1rem;
 }
 
 .site-nav {
   display: flex;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.1rem;
   justify-content: center;
 }
 
 .site-nav a {
   font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--ink);
   letter-spacing: 0.04em;
   opacity: 0.72;
   transition: opacity 160ms ease;
@@ -126,6 +140,7 @@ select {
 .site-nav a:hover,
 .site-nav a.is-active {
   opacity: 1;
+  color: var(--pht-blue);
 }
 
 .cart-trigger {
@@ -151,8 +166,8 @@ select {
   height: 1.35rem;
   display: inline-grid;
   place-items: center;
-  background: var(--ink);
-  color: var(--mint);
+  background: var(--mint);
+  color: white;
   font-size: 0.75rem;
   font-weight: 700;
   animation: pop-in 280ms ease;
@@ -192,8 +207,8 @@ select {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(14, 26, 36, 0.82) 0%, rgba(14, 26, 36, 0.45) 48%, rgba(14, 26, 36, 0.2) 100%),
-    linear-gradient(180deg, rgba(14, 26, 36, 0.15) 0%, rgba(14, 26, 36, 0.72) 100%);
+    linear-gradient(90deg, rgba(4, 4, 4, 0.78) 0%, rgba(23, 65, 125, 0.45) 55%, rgba(4, 4, 4, 0.25) 100%),
+    linear-gradient(180deg, rgba(4, 4, 4, 0.2) 0%, rgba(4, 4, 4, 0.7) 100%);
 }
 
 .hero__content {
@@ -259,11 +274,12 @@ select {
 
 .btn--primary {
   background: var(--mint);
-  color: var(--ink);
+  color: white;
 }
 
 .btn--primary:hover {
-  background: #f0b96a;
+  background: var(--ink);
+  color: white;
 }
 
 .btn--ghost-ink {
@@ -334,10 +350,10 @@ select {
 .eyebrow {
   margin: 0;
   font-size: 0.72rem;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--mint-deep);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .muted {
@@ -676,23 +692,48 @@ select {
 }
 
 .site-footer {
-  border-top: 1px solid var(--line);
+  border-top: none;
   margin-top: auto;
+  background: #0b1220;
+  color: #ffffff;
+}
+
+.site-footer .muted {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.site-footer__logo {
+  margin-bottom: 0.75rem;
+  height: 2rem;
+  width: auto;
 }
 
 .site-footer__inner {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 2rem 1.25rem;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1rem;
+  padding: 3rem 1.25rem 2.5rem;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 2rem;
 }
 
 .site-footer__links {
   display: flex;
-  gap: 1.25rem;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.site-footer__links a {
+  color: #ffffff;
+}
+
+.site-footer__links a:hover {
+  color: var(--mint);
+}
+
+.site-footer__meta p {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
 }
 
 .success-banner {
@@ -1467,4 +1508,194 @@ select {
   padding-left: 1.1rem;
   display: grid;
   gap: 0.4rem;
+}
+
+/* —— PHT homepage pillars (Personal-/Betriebs-/Prozesstechnik) —— */
+.process-strip {
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+
+.process-strip__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.process-strip__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
+  color: var(--pht-blue);
+}
+
+.pillar-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .pillar-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.pillar-card {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.pillar-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.pillar-card__media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--pht-blue);
+}
+
+.pillar-card__media img {
+  object-fit: cover;
+}
+
+.pillar-card__body {
+  padding: 1.25rem 1.2rem 1.4rem;
+  display: grid;
+  gap: 0.55rem;
+  color: var(--ink-soft);
+}
+
+.pillar-card__body h3 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display), serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.pillar-card__subs {
+  list-style: none;
+  margin: 0.35rem 0 0.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.pillar-card__subs li {
+  position: relative;
+  padding-left: 1rem;
+  font-size: 0.92rem;
+}
+
+.pillar-card__subs li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.45rem;
+  width: 6px;
+  height: 6px;
+  background: var(--mint-deep);
+}
+
+.service-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--mint-deep);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.service-link::after {
+  content: "";
+  display: inline-block;
+  width: 2rem;
+  height: 1px;
+  background: currentColor;
+  margin-left: 0.65rem;
+}
+
+.service-banner {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.75rem 1.5rem;
+  background: var(--pht-blue);
+  color: #ffffff;
+}
+
+.service-banner .eyebrow {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.service-banner h3 {
+  margin: 0.2rem 0 0.4rem;
+  font-family: var(--font-display), serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+}
+
+.service-banner p {
+  margin: 0;
+  max-width: 48ch;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.site-search--compact {
+  max-width: 10rem;
+}
+
+.site-search--compact input {
+  min-height: 2.4rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  width: 100%;
+}
+
+.shop-filters__subs {
+  margin-top: 1.5rem;
+}
+
+.shop-filters__subs h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  color: var(--pht-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.section__head h2,
+.shop-main__head h1,
+.product-tile__meta h3 {
+  color: var(--ink);
+}
+
+@media (max-width: 900px) {
+  .site-footer__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .process-strip__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .site-nav {
+    display: none;
+  }
 }
