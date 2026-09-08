@@ -8,9 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx prisma/seed.ts && cp prisma/dev.db data/demo.db",
     "db:reset": "prisma migrate reset --force",
     "erp:demo": "node scripts/demo-erp-server.mjs",
+    "deploy:demo": "vercel deploy --temporary --yes",
     "postinstall": "prisma generate"
   },
   "prisma": {

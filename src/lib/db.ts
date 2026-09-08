@@ -1,6 +1,46 @@
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+  demoDbReady?: boolean;
+};
+
+/**
+ * On Vercel (and similar serverless hosts) the filesystem is read-only except
+ * /tmp. Ship a seeded SQLite file under data/demo.db and copy it into /tmp on
+ * first use so the DEMO shop works without an external database.
+ */
+function ensureDemoSqlite() {
+  if (globalForPrisma.demoDbReady) return;
+
+  const url = process.env.DATABASE_URL ?? "";
+  const isFileUrl = url.startsWith("file:");
+  const isServerless =
+    process.env.VERCEL === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME != null;
+
+  if (!isFileUrl || !isServerless) {
+    globalForPrisma.demoDbReady = true;
+    return;
+  }
+
+  const targetPath = url.replace(/^file:/, "");
+  if (!existsSync(targetPath)) {
+    mkdirSync(dirname(targetPath), { recursive: true });
+    const seedPath = join(process.cwd(), "data", "demo.db");
+    if (!existsSync(seedPath)) {
+      throw new Error(
+        `Demo DB missing at ${seedPath}. Run npm run db:seed locally and commit data/demo.db.`,
+      );
+    }
+    copyFileSync(seedPath, targetPath);
+  }
+
+  globalForPrisma.demoDbReady = true;
+}
+
+ensureDemoSqlite();
 
 export const prisma =
   globalForPrisma.prisma ??
