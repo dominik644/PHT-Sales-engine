@@ -3,6 +3,8 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 
+export { roleLabel } from "@/lib/role-labels";
+
 const CUSTOMER_COOKIE = "pht_b2b_session";
 
 export const ROLES = {
@@ -98,17 +100,4 @@ export async function requireActiveB2BUser(): Promise<SessionUser> {
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
   if (!dbUser?.active) throw new Error("UNAUTHORIZED");
   return user;
-}
-
-export function roleLabel(role: string): string {
-  switch (role) {
-    case ROLES.PRODUCTION_MANAGER:
-      return "Produktionsleiter";
-    case ROLES.PURCHASING:
-      return "Einkauf";
-    case ROLES.COMPANY_ADMIN:
-      return "Firmen-Admin";
-    default:
-      return role;
-  }
 }
