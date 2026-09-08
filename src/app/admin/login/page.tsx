@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
     setLoading(false);
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(data?.error ?? "Login failed");
+      setError(data?.error ?? "Anmeldung fehlgeschlagen");
       return;
     }
     router.push("/admin");
@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
     <div className="admin-shell">
       <form className="panel admin-login" onSubmit={onSubmit}>
         <p className="eyebrow">Admin</p>
-        <h1>PHT Webshop Admin</h1>
+        <h1>PHT Hygiene Admin</h1>
         <p className="muted">Sign in to manage catalog, orders, and ERP sync.</p>
         <label>
           Password

@@ -84,7 +84,7 @@ export function AdminActions({ retryOrderId }: { retryOrderId?: string }) {
         Sync products from ERP
       </button>
       <button type="button" className="btn btn--ink" onClick={logout}>
-        Log out
+        Abmelden
       </button>
       {erpStatus ? <p className="muted">{erpStatus}</p> : null}
       {message ? <p className="muted">{message}</p> : null}
