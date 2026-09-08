@@ -1,0 +1,75 @@
+import {
+  BarChart3, Bot, CreditCard, Crown, GitBranch, Globe2, MapPin, Menu, Mic, Settings,
+} from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { useAssistant } from '../context/AssistantContext';
+
+const allTabs = [
+  { to: '/command-center', label: 'Command', icon: Crown },
+  { to: '/priorities', label: 'Tourenplanung', icon: MapPin },
+  { to: '/snapaddy', label: 'Snapaddy', icon: CreditCard },
+  { to: '/plaud', label: 'Plaud', icon: Mic, mobileMore: true },
+  { to: '/sales-funnel', label: 'Funnel', icon: GitBranch },
+  { to: '/opportunities', label: 'Opportunities', icon: Globe2, adminOnly: true },
+  { to: '/settings', label: 'Einstellungen', icon: Settings, mobileMore: true },
+  { to: '/analytics', label: 'Analytics', icon: BarChart3, adminOnly: true, mobileMore: true },
+];
+
+interface MobileBottomNavProps {
+  adminNav: boolean;
+  onMoreClick: () => void;
+}
+
+export function MobileBottomNav({ adminNav, onMoreClick }: MobileBottomNavProps) {
+  const location = useLocation();
+  const { openAssistant } = useAssistant();
+  const primaryTabs = allTabs.filter((tab) => !tab.mobileMore && (adminNav || !tab.adminOnly));
+
+  return (
+    <nav
+      className="fixed bottom-0 inset-x-0 z-40 lg:hidden border-t border-dark-500/60 bg-dark-800/95 backdrop-blur-md"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      aria-label="Hauptnavigation"
+    >
+      <div className="flex items-stretch justify-around px-1 pt-1">
+        {primaryTabs.map(({ to, label, icon: Icon }) => {
+          const [path, queryPart] = to.split('?');
+          const active = location.pathname.startsWith(path)
+            && (!queryPart || location.search.includes(queryPart));
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={`flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-2 px-1 min-h-[52px] rounded-lg transition-colors ${
+                active ? 'text-pht-400' : 'text-slate-500 active:text-slate-300'
+              }`}
+            >
+              <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-pht-400' : ''}`} />
+              <span className="text-[10px] font-medium truncate max-w-full">{label}</span>
+            </NavLink>
+          );
+        })}
+        <button
+          type="button"
+          onClick={openAssistant}
+          className="flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-2 px-1 min-h-[52px] rounded-lg text-violet-400 active:text-violet-300"
+          aria-label="SOPHIE öffnen"
+        >
+          <Bot className="w-5 h-5 shrink-0" />
+          <span className="text-[10px] font-medium">SOPHIE</span>
+        </button>
+        {adminNav && (
+          <button
+            type="button"
+            onClick={onMoreClick}
+            className="flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-2 px-1 min-h-[52px] rounded-lg text-slate-500 active:text-slate-300"
+            aria-label="Weitere Menüpunkte"
+          >
+            <Menu className="w-5 h-5 shrink-0" />
+            <span className="text-[10px] font-medium">Mehr</span>
+          </button>
+        )}
+      </div>
+    </nav>
+  );
+}
