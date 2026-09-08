@@ -1,24 +1,31 @@
-# Besuchsberichte (Kundenstammdaten) – Patch für pht-mastertool
+# PHT Mastertool – fertige Features (zum Übernehmen)
 
-Änderungen für [pht-mastertool](https://github.com/dominik644/pht-mastertool):
+Branch lokal: `cursor/mastertool-features-089f` (Commits: Besuchsberichte + Plaud Note)
 
-- Abschnitt **Besuchsberichte** in den Kundenstammdaten
-- **+ Tag** legt einen neuen Besuchstag an
-- Tage sind **aus-/einklappbar**
-- **Keywords** bleiben in der eingeklappten Zeile sichtbar
-- Speichern über „Stammdaten speichern“ (localStorage)
+## 1. Besuchsberichte (Kundenstammdaten)
 
-## Dateien
+- Abschnitt **Besuchsberichte** in den Stammdaten
+- **+ Tag** → neuer Besuchstag
+- Aus-/einklappbar; **Keywords** bleiben eingeklappt sichtbar
+- Speichern mit Stammdaten (localStorage)
 
-- `src/types/customerDetails.ts` – Typ `VisitReport`, `createEmptyVisitReport`
-- `src/services/customerDetailsStorage.ts` – Laden von `visitReports`
-- `src/components/customerPriorities/CustomerStammdatenForm.tsx` – UI
+## 2. Plaud Note
 
-## Anwenden
+- Webhook `POST /api/plaud` (Zapier → Bearer `PLAUD_WEBHOOK_SECRET`)
+- Inbox unter `/plaud`, Nav-Eintrag, Settings-Hinweis
+- Action Items → Todos
 
-Im Clone von `pht-mastertool`:
+### Vercel
+
+Secret setzen: `PLAUD_WEBHOOK_SECRET`
+
+### Anwenden im Repo `pht-mastertool`
 
 ```bash
-git apply /pfad/zu/besuchsberichte.patch
-# oder die drei Dateien unter src/ manuell übernehmen
+git checkout -b cursor/mastertool-features-089f
+git apply /pfad/zu/mastertool-features.patch
+# oder Dateien unter diesem Ordner 1:1 nach pht-mastertool kopieren
 ```
+
+> Cloud Agent hat aktuell keinen Write-Zugriff auf `dominik644/pht-mastertool`.
+> Bitte Cursor GitHub App + Environment um dieses Repo ergänzen.

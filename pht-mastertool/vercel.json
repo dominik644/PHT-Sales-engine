@@ -1,0 +1,226 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "functions": {
+    "api/ingest.js": {
+      "maxDuration": 10
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/ingest",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/schedule-follow-up-cron",
+      "schedule": "0 7 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/data/:path*",
+      "destination": "/data/:path*"
+    },
+    {
+      "source": "/api/auth/me",
+      "destination": "/api/auth?route=me"
+    },
+    {
+      "source": "/api/auth/login",
+      "destination": "/api/auth?route=login"
+    },
+    {
+      "source": "/api/auth/logout",
+      "destination": "/api/auth?route=logout"
+    },
+    {
+      "source": "/api/auth/users",
+      "destination": "/api/auth?route=users"
+    },
+    {
+      "source": "/api/auth/change-password",
+      "destination": "/api/auth?route=change-password"
+    },
+    {
+      "source": "/api/ingest",
+      "destination": "/api/ingest"
+    },
+    {
+      "source": "/api/tenders-db",
+      "destination": "/api/tenders?source=db"
+    },
+    {
+      "source": "/api/ted",
+      "destination": "/api/tenders?source=ted"
+    },
+    {
+      "source": "/api/assistant",
+      "destination": "/api/assistant"
+    },
+    {
+      "source": "/api/bc-sync",
+      "destination": "/api/bc?route=sync"
+    },
+    {
+      "source": "/api/bc-documents",
+      "destination": "/api/bc?route=documents"
+    },
+    {
+      "source": "/api/bc-salespeople",
+      "destination": "/api/bc?route=salespeople"
+    },
+    {
+      "source": "/api/bc-purchase-activity",
+      "destination": "/api/bc?route=purchase-activity"
+    },
+    {
+      "source": "/api/sales-sync",
+      "destination": "/api/sales-sync"
+    },
+    {
+      "source": "/api/snapaddy",
+      "destination": "/api/snapaddy"
+    },
+    {
+      "source": "/api/plaud",
+      "destination": "/api/plaud"
+    },
+    {
+      "source": "/api/schedule-proposal",
+      "destination": "/api/schedule?route=proposal"
+    },
+    {
+      "source": "/api/schedule-confirm",
+      "destination": "/api/schedule?route=confirm"
+    },
+    {
+      "source": "/api/schedule-wish",
+      "destination": "/api/schedule?route=wish"
+    },
+    {
+      "source": "/book/wish",
+      "destination": "/api/schedule?route=wish"
+    },
+    {
+      "source": "/api/schedule-wish-accept",
+      "destination": "/api/schedule?route=wish-accept"
+    },
+    {
+      "source": "/api/schedule-custom-requests",
+      "destination": "/api/schedule?route=custom-requests"
+    },
+    {
+      "source": "/api/schedule-send",
+      "destination": "/api/schedule?route=send"
+    },
+    {
+      "source": "/api/schedule-eml",
+      "destination": "/api/schedule?route=eml"
+    },
+    {
+      "source": "/api/calendar-busy",
+      "destination": "/api/schedule?route=calendar-busy"
+    },
+    {
+      "source": "/api/schedule-follow-up-cron",
+      "destination": "/api/schedule?route=follow-up-cron"
+    },
+    {
+      "source": "/api/analyze-tender",
+      "destination": "/api/analyze-tender"
+    },
+    {
+      "source": "/api/translate",
+      "destination": "/api/translate"
+    },
+    {
+      "source": "/api/uk",
+      "destination": "/api/uk"
+    },
+    {
+      "source": "/api/oeffentlichevergabe",
+      "destination": "/api/oeffentlichevergabe"
+    },
+    {
+      "source": "/api/uk-contracts",
+      "destination": "/api/uk?target=contracts"
+    },
+    {
+      "source": "/api/uk-find-tender",
+      "destination": "/api/uk?target=find-tender"
+    },
+    {
+      "source": "/api/uk-cf-ocds",
+      "destination": "/api/uk?target=cf-ocds"
+    },
+    {
+      "source": "/api/doffin",
+      "destination": "/api/tenders?source=doffin"
+    },
+    {
+      "source": "/api/hilma",
+      "destination": "/api/tenders?source=hilma"
+    },
+    {
+      "source": "/api/austender/:rest*",
+      "destination": "/api/tenders?source=austender&rest=:rest*"
+    },
+    {
+      "source": "/api/austender",
+      "destination": "/api/tenders?source=austender"
+    },
+    {
+      "source": "/api/bund",
+      "destination": "/api/tenders?source=bund"
+    },
+    {
+      "source": "/api/tenderned",
+      "destination": "/api/tenders?source=tenderned"
+    },
+    {
+      "source": "/api/bbg",
+      "destination": "/api/tenders?source=bbg"
+    },
+    {
+      "source": "/api/simap",
+      "destination": "/api/tenders?source=simap"
+    },
+    {
+      "source": "/api/prozorro/:rest*",
+      "destination": "/api/tenders?source=prozorro&rest=:rest*"
+    },
+    {
+      "source": "/api/prozorro",
+      "destination": "/api/tenders?source=prozorro"
+    },
+    {
+      "source": "/api/za-etenders",
+      "destination": "/api/tenders?source=za-etenders"
+    },
+    {
+      "source": "/api/tenders/oeffentlichevergabe",
+      "destination": "/api/oeffentlichevergabe"
+    },
+    {
+      "source": "/api/tenders/austender/:rest*",
+      "destination": "/api/tenders?source=austender&rest=:rest*"
+    },
+    {
+      "source": "/api/tenders/mtender/:rest*",
+      "destination": "/api/tenders?source=mtender&rest=:rest*"
+    },
+    {
+      "source": "/api/tenders/prozorro/:rest*",
+      "destination": "/api/tenders?source=prozorro&rest=:rest*"
+    },
+    {
+      "source": "/api/tenders/:source",
+      "destination": "/api/tenders?source=:source"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,1098 @@
+diff --git a/.env.local.example b/.env.local.example
+index d46e2fa..f55b496 100644
+--- a/.env.local.example
++++ b/.env.local.example
+@@ -59,6 +59,15 @@ SUPABASE_ANON_KEY=your-supabase-anon-key
+ # Handy: Export „snapAddy API“ – nicht CRM / Kontakt teilen
+ SNAPADDY_WEBHOOK_SECRET=your-snapaddy-webhook-secret
+ 
++# Plaud Note (AI Voice Recorder → Zapier → Mastertool)
++# Plaud Web → Explore → Integrations → Zapier
++# Trigger: Transcript & Summary Ready
++# Action: Webhooks by Zapier → POST
++# Ziel-URL: https://pht-mastertool.vercel.app/api/plaud
++# Authorization: Bearer <PLAUD_WEBHOOK_SECRET>
++# Felder: title, transcript, summary, actionItems, recordedAt
++PLAUD_WEBHOOK_SECRET=your-plaud-webhook-secret
++
+ # SCHEDULE_TOKEN_SECRET=random-secret-min-32-chars  (npm run setup:production generiert Hinweis)
+ # Optional: SUPABASE_DB_URL=postgresql://... für automatisches Schema (scripts/apply-supabase-schema.mjs)
+ # RESEND_API_KEY=re_...  (empfohlen – https://resend.com; ohne Key: E-Mail-Vorschau in der App)
+diff --git a/api/plaud.js b/api/plaud.js
+new file mode 100644
+index 0000000..2ca4ec9
+--- /dev/null
++++ b/api/plaud.js
+@@ -0,0 +1,83 @@
++import { guardAppAuth } from '../lib/appAuth.js';
++import {
++  extractPlaudNote,
++  fetchPlaudNote,
++  insertPlaudNote,
++  isPlaudWebhookAuthorized,
++  listPlaudNotes,
++  listPendingPlaudNotes,
++  plaudPublicBase,
++  updatePlaudNoteStatus,
++} from '../lib/plaudInbox.js';
++
++function callbackUri(req, note) {
++  return `${plaudPublicBase(req)}/plaud?note=${encodeURIComponent(note.id)}`;
++}
++
++export default async function handler(req, res) {
++  res.setHeader('Access-Control-Allow-Origin', '*');
++  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
++  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Plaud-Secret');
++
++  if (req.method === 'OPTIONS') return res.status(200).json({ ok: true });
++
++  if (req.method === 'POST') {
++    if (!isPlaudWebhookAuthorized(req)) {
++      return res.status(401).json({ error: 'Ungültiger Plaud-Schlüssel' });
++    }
++    const parsed = extractPlaudNote(req.body ?? {});
++    if (!parsed) {
++      return res.status(400).json({
++        error: 'Keine Notizdaten',
++        message: 'Titel, Transkript oder Summary fehlt. Zapier/Plaud-Payload als JSON senden.',
++      });
++    }
++    const note = await insertPlaudNote(parsed);
++    const uri = callbackUri(req, note);
++    return res.status(200).json({
++      ok: true,
++      id: note.id,
++      uri,
++      callbackUrl: uri,
++      title: note.title,
++    });
++  }
++
++  const cookie = String(req.headers?.cookie || '');
++  const plaudProbe = isPlaudWebhookAuthorized(req) && !cookie.includes('pht_session');
++  if (req.method === 'GET' && plaudProbe) {
++    return res.status(200).json({
++      ok: true,
++      message: 'Plaud-API bereit. Notizen bitte per POST (Zapier Webhook) senden.',
++    });
++  }
++
++  const guard = guardAppAuth(req, res);
++  if (!guard.ok) return;
++
++  if (req.method === 'GET') {
++    const id = req.query?.id;
++    if (id) {
++      const note = fetchPlaudNote(String(id));
++      if (!note) return res.status(404).json({ error: 'Notiz nicht gefunden' });
++      return res.status(200).json({ ok: true, note });
++    }
++    if (req.query?.all === '1') {
++      return res.status(200).json({ ok: true, notes: await listPlaudNotes() });
++    }
++    return res.status(200).json({ ok: true, notes: await listPendingPlaudNotes() });
++  }
++
++  if (req.method === 'PATCH') {
++    const id = req.body?.id;
++    const status = req.body?.status;
++    if (!id || (status !== 'applied' && status !== 'dismissed' && status !== 'pending')) {
++      return res.status(400).json({ error: 'id und status (pending|applied|dismissed) erforderlich' });
++    }
++    const updated = await updatePlaudNoteStatus(String(id), status);
++    if (!updated) return res.status(404).json({ error: 'Notiz nicht gefunden' });
++    return res.status(200).json({ ok: true, note: updated });
++  }
++
++  return res.status(405).json({ error: 'Method not allowed' });
++}
+diff --git a/lib/plaudInbox.js b/lib/plaudInbox.js
+new file mode 100644
+index 0000000..956e971
+--- /dev/null
++++ b/lib/plaudInbox.js
+@@ -0,0 +1,183 @@
++import { randomBytes } from 'node:crypto';
++import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
++import { dirname, join } from 'node:path';
++
++function getStorePath() {
++  if (process.env.VERCEL === '1') return '/tmp/plaud-inbox.json';
++  return join(process.cwd(), 'data', 'plaud-inbox.json');
++}
++
++function readAll() {
++  const path = getStorePath();
++  if (!existsSync(path)) return {};
++  try {
++    const parsed = JSON.parse(readFileSync(path, 'utf8'));
++    return parsed && typeof parsed === 'object' ? parsed : {};
++  } catch {
++    return {};
++  }
++}
++
++function writeAll(map) {
++  const path = getStorePath();
++  mkdirSync(dirname(path), { recursive: true });
++  writeFileSync(path, JSON.stringify(map, null, 2), 'utf8');
++}
++
++function asText(v) {
++  if (v == null) return '';
++  if (typeof v === 'string' || typeof v === 'number') return String(v).trim();
++  if (Array.isArray(v)) {
++    return v.map((item) => asText(item)).filter(Boolean).join('\n').trim();
++  }
++  if (typeof v === 'object') {
++    return asText(v.value ?? v.text ?? v.content ?? v.summary ?? v.transcript);
++  }
++  return '';
++}
++
++function asList(v) {
++  if (v == null) return [];
++  if (Array.isArray(v)) {
++    return v.map((item) => asText(item?.title ?? item?.text ?? item?.content ?? item)).filter(Boolean);
++  }
++  const text = asText(v);
++  if (!text) return [];
++  return text
++    .split(/\n|•|;|\u2022/)
++    .map((line) => line.replace(/^[-*\d.)\s]+/, '').trim())
++    .filter(Boolean);
++}
++
++function pick(obj, keys) {
++  for (const k of keys) {
++    const t = asText(obj?.[k]);
++    if (t) return t;
++  }
++  return '';
++}
++
++function parseBody(raw) {
++  if (raw == null) return {};
++  if (typeof raw === 'string') {
++    try { return JSON.parse(raw.trim()); } catch { return { transcript: raw.trim() }; }
++  }
++  if (Buffer.isBuffer(raw)) return parseBody(raw.toString('utf8'));
++  if (typeof raw === 'object') return raw;
++  return {};
++}
++
++/** Normalize Zapier / Plaud webhook payloads into a note record. */
++export function normalizePlaudPayload(rawBody) {
++  const body = parseBody(rawBody);
++  const src = body?.data && typeof body.data === 'object' && !Array.isArray(body.data)
++    ? body.data
++    : body;
++
++  const title = pick(src, ['title', 'Title', 'name', 'Name', 'filename', 'fileName'])
++    || 'Plaud Note';
++  const transcript = pick(src, [
++    'transcript', 'Transcript', 'transcription', 'Transcription',
++    'full_text', 'fullText', 'text', 'content',
++  ]);
++  const summary = pick(src, [
++    'summary', 'Summary', 'ai_summary', 'aiSummary', 'overview', 'Overview',
++  ]);
++  const actionItems = asList(
++    src.actionItems ?? src.action_items ?? src.ActionItems ?? src.todos ?? src.tasks,
++  );
++  const recordedAt = pick(src, [
++    'recordedAt', 'recorded_at', 'Recorded At', 'createdAt', 'created_at',
++    'Created At', 'date', 'timestamp',
++  ]) || new Date().toISOString();
++
++  return {
++    title,
++    transcript,
++    summary,
++    actionItems,
++    recordedAt,
++    rawKeys: Object.keys(src || {}),
++  };
++}
++
++export function extractPlaudNote(rawBody) {
++  const note = normalizePlaudPayload(rawBody);
++  if (!note.transcript && !note.summary && !note.title) return null;
++  if (!note.transcript && !note.summary && note.title === 'Plaud Note') return null;
++  return note;
++}
++
++export async function insertPlaudNote(normalized) {
++  const id = randomBytes(8).toString('hex');
++  const note = {
++    id,
++    title: normalized.title || 'Plaud Note',
++    transcript: normalized.transcript || '',
++    summary: normalized.summary || '',
++    actionItems: Array.isArray(normalized.actionItems) ? normalized.actionItems : [],
++    recordedAt: normalized.recordedAt || new Date().toISOString(),
++    receivedAt: new Date().toISOString(),
++    status: 'pending',
++  };
++  const all = readAll();
++  all[id] = note;
++  writeAll(all);
++  return note;
++}
++
++export async function listPendingPlaudNotes() {
++  return Object.values(readAll())
++    .filter((n) => n.status === 'pending')
++    .sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt)));
++}
++
++export async function listPlaudNotes({ status } = {}) {
++  let notes = Object.values(readAll());
++  if (status) notes = notes.filter((n) => n.status === status);
++  return notes.sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt)));
++}
++
++export function fetchPlaudNote(id) {
++  return readAll()[id] ?? null;
++}
++
++export async function updatePlaudNoteStatus(id, status) {
++  const all = readAll();
++  if (!all[id]) return null;
++  all[id] = { ...all[id], status };
++  writeAll(all);
++  return all[id];
++}
++
++function queryToken(req) {
++  const q = req.query || {};
++  return String(q.token || q.secret || q.key || '').trim();
++}
++
++export function isPlaudWebhookAuthorized(req) {
++  const secret = process.env.PLAUD_WEBHOOK_SECRET?.trim()
++    || process.env.CRON_SECRET?.trim()
++    || '';
++  if (!secret) {
++    return process.env.NODE_ENV !== 'production';
++  }
++  const auth = String(req.headers?.authorization || '');
++  const token = auth.replace(/^Bearer\s+/i, '').trim();
++  const headerSecret = String(req.headers?.['x-plaud-secret'] || '').trim();
++  const q = queryToken(req);
++  return token === secret || headerSecret === secret || q === secret;
++}
++
++export function plaudPublicBase(req) {
++  if (process.env.SCHEDULE_PUBLIC_BASE_URL) {
++    return process.env.SCHEDULE_PUBLIC_BASE_URL.replace(/\/$/, '');
++  }
++  const host = String(req.headers?.['x-forwarded-host'] || req.headers?.host || '').split(',')[0].trim();
++  if (host) {
++    const proto = req.headers?.['x-forwarded-proto'] || 'https';
++    return `${proto}://${host}`;
++  }
++  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL.replace(/^https?:\/\//, '')}`;
++  return 'http://localhost:5173';
++}
+diff --git a/src/App.tsx b/src/App.tsx
+index d4171a0..fad6e87 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -30,6 +30,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
+ import { SalesFunnelPage } from './pages/SalesFunnelPage';
+ import { CustomerPrioritiesPage } from './pages/CustomerPrioritiesPage';
+ import { SnapaddyPage } from './pages/SnapaddyPage';
++import { PlaudPage } from './pages/PlaudPage';
+ import { RequirePasswordChange } from './components/RequirePasswordChange';
+ 
+ function PrioritiesRoute() {
+@@ -63,6 +64,8 @@ export default function App() {
+               <Route path="priorities" element={<PrioritiesRoute />} />
+               <Route path="snapaddy" element={<SnapaddyPage />} />
+               <Route path="visitenkarten" element={<Navigate to="/snapaddy" replace />} />
++              <Route path="plaud" element={<PlaudPage />} />
++              <Route path="plaud-note" element={<Navigate to="/plaud" replace />} />
+               <Route path="sales-funnel" element={<SalesFunnelPage />} />
+               <Route path="settings" element={<SettingsPage />} />
+               <Route path="tourenplanung" element={<Navigate to="/priorities" replace />} />
+diff --git a/src/components/Layout.tsx b/src/components/Layout.tsx
+index 5dda059..9e850e4 100644
+--- a/src/components/Layout.tsx
++++ b/src/components/Layout.tsx
+@@ -1,5 +1,5 @@
+ import {
+-  BarChart3, CreditCard, Crown, GitBranch, Globe, Globe2, MapPin, Menu, Settings, X,
++  BarChart3, CreditCard, Crown, GitBranch, Globe, Globe2, MapPin, Menu, Mic, Settings, X,
+ } from 'lucide-react';
+ import { useEffect, useState } from 'react';
+ import { Link, NavLink, Outlet } from 'react-router-dom';
+@@ -27,6 +27,7 @@ const primaryNavItems = [
+   { to: '/command-center', label: 'Command Center', icon: Crown },
+   { to: '/priorities', label: 'Tourenplanung', icon: MapPin },
+   { to: '/snapaddy', label: 'Snapaddy', icon: CreditCard },
++  { to: '/plaud', label: 'Plaud Note', icon: Mic },
+   { to: '/sales-funnel', label: 'Sales Funnel', icon: GitBranch },
+   { to: '/opportunities', label: 'Opportunities', icon: Globe2, adminOnly: true },
+   { to: '/analytics', label: 'Analytics', icon: BarChart3, adminOnly: true },
+diff --git a/src/components/MobileBottomNav.tsx b/src/components/MobileBottomNav.tsx
+index 5844e2c..1621416 100644
+--- a/src/components/MobileBottomNav.tsx
++++ b/src/components/MobileBottomNav.tsx
+@@ -1,5 +1,5 @@
+ import {
+-  BarChart3, Bot, CreditCard, Crown, GitBranch, Globe2, MapPin, Menu, Settings,
++  BarChart3, Bot, CreditCard, Crown, GitBranch, Globe2, MapPin, Menu, Mic, Settings,
+ } from 'lucide-react';
+ import { NavLink, useLocation } from 'react-router-dom';
+ import { useAssistant } from '../context/AssistantContext';
+@@ -8,6 +8,7 @@ const allTabs = [
+   { to: '/command-center', label: 'Command', icon: Crown },
+   { to: '/priorities', label: 'Tourenplanung', icon: MapPin },
+   { to: '/snapaddy', label: 'Snapaddy', icon: CreditCard },
++  { to: '/plaud', label: 'Plaud', icon: Mic, mobileMore: true },
+   { to: '/sales-funnel', label: 'Funnel', icon: GitBranch },
+   { to: '/opportunities', label: 'Opportunities', icon: Globe2, adminOnly: true },
+   { to: '/settings', label: 'Einstellungen', icon: Settings, mobileMore: true },
+diff --git a/src/components/MobileMoreSheet.tsx b/src/components/MobileMoreSheet.tsx
+index e28c7a5..1416c7c 100644
+--- a/src/components/MobileMoreSheet.tsx
++++ b/src/components/MobileMoreSheet.tsx
+@@ -1,11 +1,12 @@
+ import {
+   Bell, Calculator, Calendar, CheckCircle, CheckSquare, CreditCard, GitBranch, Globe, Globe2,
+-  Settings, Star, UserCog, X,
++  Mic, Settings, Star, UserCog, X,
+ } from 'lucide-react';
+ import { NavLink } from 'react-router-dom';
+ 
+ const moreItems = [
+   { to: '/snapaddy', label: 'Snapaddy Visitenkarten', icon: CreditCard },
++  { to: '/plaud', label: 'Plaud Note', icon: Mic },
+   { to: '/tenders', label: 'Ausschreibungen (Hintergrund)', icon: Globe },
+   { to: '/coverage', label: 'Länder-Abdeckung', icon: Globe2 },
+   { to: '/watchlist', label: 'Watchlist', icon: Star },
+diff --git a/src/components/customerPriorities/CustomerStammdatenForm.tsx b/src/components/customerPriorities/CustomerStammdatenForm.tsx
+index ab7fa0a..f2951ba 100644
+--- a/src/components/customerPriorities/CustomerStammdatenForm.tsx
++++ b/src/components/customerPriorities/CustomerStammdatenForm.tsx
+@@ -1,7 +1,7 @@
+-import { Building2, ChevronDown, Plus, Trash2, User } from 'lucide-react';
++import { Building2, CalendarDays, ChevronDown, Plus, Trash2, User } from 'lucide-react';
+ import { useEffect, useState } from 'react';
+-import type { CustomerDetails, RelatedCompany } from '../../types/customerDetails';
+-import { EMPTY_ADDRESS, EMPTY_CONTACT } from '../../types/customerDetails';
++import type { CustomerDetails, RelatedCompany, VisitReport } from '../../types/customerDetails';
++import { EMPTY_ADDRESS, EMPTY_CONTACT, createEmptyVisitReport } from '../../types/customerDetails';
+ import {
+   CUSTOMER_DETAILS_CHANGED_EVENT,
+   effectiveLieferadresse,
+@@ -15,6 +15,30 @@ interface CustomerStammdatenFormProps {
+   customerName: string;
+ }
+ 
++function parseKeywords(raw: string): string[] {
++  return raw
++    .split(/[,;|/]+/)
++    .map((k) => k.trim())
++    .filter(Boolean);
++}
++
++function formatKeywords(keywords: string[]): string {
++  return keywords.join(', ');
++}
++
++function formatVisitDate(iso: string): string {
++  try {
++    return new Date(`${iso}T12:00:00`).toLocaleDateString('de-AT', {
++      weekday: 'short',
++      day: '2-digit',
++      month: '2-digit',
++      year: 'numeric',
++    });
++  } catch {
++    return iso;
++  }
++}
++
+ function Field({
+   label, value, onChange, type = 'text', placeholder, fromBc,
+ }: {
+@@ -50,6 +74,7 @@ export function CustomerStammdatenForm({ customerId, customerName }: CustomerSta
+   const [open, setOpen] = useState(false);
+   const [details, setDetails] = useState<CustomerDetails>(() => getCustomerDetails(customerId));
+   const [saved, setSaved] = useState(false);
++  const [expandedVisits, setExpandedVisits] = useState<Record<string, boolean>>({});
+ 
+   useEffect(() => {
+     const onChange = () => setDetails(getCustomerDetails(customerId));
+@@ -112,11 +137,62 @@ export function CustomerStammdatenForm({ customerId, customerName }: CustomerSta
+     setSaved(false);
+   };
+ 
++  const visitReports = details.visitReports ?? [];
++
++  const addVisitReport = () => {
++    const report = createEmptyVisitReport();
++    setDetails((d) => ({
++      ...d,
++      visitReports: [report, ...(d.visitReports ?? [])],
++    }));
++    setExpandedVisits((m) => ({ ...m, [report.id]: true }));
++    setSaved(false);
++  };
++
++  const updateVisitReport = (id: string, partial: Partial<VisitReport>) => {
++    setDetails((d) => ({
++      ...d,
++      visitReports: (d.visitReports ?? []).map((r) => (r.id === id ? { ...r, ...partial } : r)),
++    }));
++    setSaved(false);
++  };
++
++  const removeVisitReport = (id: string) => {
++    setDetails((d) => ({
++      ...d,
++      visitReports: (d.visitReports ?? []).filter((r) => r.id !== id),
++    }));
++    setExpandedVisits((m) => {
++      const next = { ...m };
++      delete next[id];
++      return next;
++    });
++    setSaved(false);
++  };
++
++  const isVisitOpen = (report: VisitReport) => {
++    if (expandedVisits[report.id] !== undefined) return expandedVisits[report.id];
++    return Boolean(report.open);
++  };
++
++  const toggleVisit = (id: string) => {
++    const report = visitReports.find((r) => r.id === id);
++    if (!report) return;
++    setExpandedVisits((m) => ({ ...m, [id]: !isVisitOpen(report) }));
++  };
++
+   const handleSave = () => {
+     const toSave = details.lieferadresseWieRechnung
+       ? { ...details, lieferadresse: { ...details.rechnungsadresse } }
+       : details;
+-    updateCustomerDetails(customerId, toSave);
++    updateCustomerDetails(customerId, {
++      ...toSave,
++      visitReports: (toSave.visitReports ?? []).map((r) => ({
++        ...r,
++        keywords: r.keywords.map((k) => k.trim()).filter(Boolean),
++        open: undefined,
++      })),
++    });
+     setSaved(true);
+     setTimeout(() => setSaved(false), 2000);
+   };
+@@ -125,7 +201,8 @@ export function CustomerStammdatenForm({ customerId, customerName }: CustomerSta
+     details.ansprechperson.name
+     || details.rechnungsadresse.street
+     || details.zugehoerigeFirmen.length
+-    || details.bcCustomerNumber,
++    || details.bcCustomerNumber
++    || visitReports.length,
+   );
+ 
+   const liefer = effectiveLieferadresse(details);
+@@ -149,6 +226,7 @@ export function CustomerStammdatenForm({ customerId, customerName }: CustomerSta
+           <span className="text-slate-600 ml-1">
+             · {details.ansprechperson.name || '—'}
+             {details.bcCustomerNumber && ` · BC ${details.bcCustomerNumber}`}
++            {visitReports.length > 0 && ` · ${visitReports.length} Besuch${visitReports.length === 1 ? '' : 'e'}`}
+           </span>
+         )}
+       </button>
+@@ -295,6 +373,110 @@ export function CustomerStammdatenForm({ customerId, customerName }: CustomerSta
+             </div>
+           </div>
+ 
++          <div>
++            <div className="flex items-center justify-between mb-2 gap-2">
++              <p className="text-xs font-medium text-slate-400 flex items-center gap-1">
++                <CalendarDays className="w-3.5 h-3.5" /> Besuchsberichte
++              </p>
++              <button
++                type="button"
++                onClick={addVisitReport}
++                className="inline-flex items-center gap-1 rounded-lg bg-pht-600/20 border border-pht-500/40 text-pht-300 px-2 py-1 text-xs hover:bg-pht-600/30"
++                aria-label="Besuchstag hinzufügen"
++              >
++                <Plus className="w-3.5 h-3.5" /> Tag
++              </button>
++            </div>
++            <p className="text-[10px] text-slate-600 mb-2">
++              Pro Tag ein Bericht — Keywords bleiben sichtbar, wenn der Tag eingeklappt ist.
++            </p>
++            <div className="space-y-2">
++              {visitReports.length === 0 && (
++                <p className="text-xs text-slate-600">Noch keine Besuchsberichte. Mit + Tag anlegen.</p>
++              )}
++              {visitReports.map((report) => {
++                const openVisit = isVisitOpen(report);
++                return (
++                  <div
++                    key={report.id}
++                    className="rounded-lg border border-dark-500/70 bg-dark-900/40 overflow-hidden"
++                  >
++                    <div className="flex items-center gap-2 px-2.5 py-2">
++                      <button
++                        type="button"
++                        onClick={() => toggleVisit(report.id)}
++                        className="flex items-center gap-2 flex-1 min-w-0 text-left"
++                      >
++                        <ChevronDown
++                          className={`w-3.5 h-3.5 text-slate-500 shrink-0 transition-transform ${openVisit ? 'rotate-180' : ''}`}
++                        />
++                        <span className="text-xs font-medium text-white shrink-0">
++                          {formatVisitDate(report.date)}
++                        </span>
++                        <span className="flex flex-wrap gap-1 min-w-0">
++                          {report.keywords.length === 0 ? (
++                            <span className="text-[10px] text-slate-600 italic">keine Keywords</span>
++                          ) : (
++                            report.keywords.map((kw) => (
++                              <span
++                                key={kw}
++                                className="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-200 border border-amber-500/25 truncate max-w-[9rem]"
++                              >
++                                {kw}
++                              </span>
++                            ))
++                          )}
++                        </span>
++                      </button>
++                      <button
++                        type="button"
++                        onClick={() => removeVisitReport(report.id)}
++                        className="p-1.5 text-slate-600 hover:text-red-400 shrink-0"
++                        aria-label="Besuchsbericht löschen"
++                      >
++                        <Trash2 className="w-3.5 h-3.5" />
++                      </button>
++                    </div>
++
++                    {openVisit && (
++                      <div className="px-2.5 pb-2.5 space-y-2 border-t border-dark-600/50 pt-2">
++                        <Field
++                          label="Datum"
++                          type="date"
++                          value={report.date}
++                          onChange={(v) => updateVisitReport(report.id, { date: v })}
++                        />
++                        <label className="block text-xs text-slate-500">
++                          Keywords
++                          <span className="text-slate-600 font-normal"> (kommagetrennt, z. B. Hygiene, Angebot, Nachfassen)</span>
++                          <input
++                            type="text"
++                            value={formatKeywords(report.keywords)}
++                            onChange={(e) => updateVisitReport(report.id, {
++                              keywords: parseKeywords(e.target.value),
++                            })}
++                            placeholder="Thema, Produkt, nächster Schritt…"
++                            className="mt-0.5 w-full px-2.5 py-1.5 rounded-lg bg-dark-700 border border-dark-500 text-sm text-white"
++                          />
++                        </label>
++                        <label className="block text-xs text-slate-500">
++                          Bericht
++                          <textarea
++                            value={report.notes}
++                            onChange={(e) => updateVisitReport(report.id, { notes: e.target.value })}
++                            rows={3}
++                            placeholder="Was wurde besprochen, Ergebnisse, offene Punkte…"
++                            className="mt-0.5 w-full px-2.5 py-1.5 rounded-lg bg-dark-700 border border-dark-500 text-sm text-white resize-y min-h-[4.5rem]"
++                          />
++                        </label>
++                      </div>
++                    )}
++                  </div>
++                );
++              })}
++            </div>
++          </div>
++
+           <div className="flex gap-2">
+             <button type="button" onClick={handleSave} className="px-3 py-1.5 rounded-lg bg-pht-600 text-white text-xs hover:bg-pht-700">
+               Stammdaten speichern
+diff --git a/src/components/plaud/PlaudInboxPanel.tsx b/src/components/plaud/PlaudInboxPanel.tsx
+new file mode 100644
+index 0000000..10c13c0
+--- /dev/null
++++ b/src/components/plaud/PlaudInboxPanel.tsx
+@@ -0,0 +1,175 @@
++import { Check, Mic, Trash2, ListTodo } from 'lucide-react';
++import { useCallback, useEffect, useState } from 'react';
++import type { PlaudNote } from '../../types/plaud';
++import {
++  applyPlaudActionItemsToTodos,
++  fetchPlaudInbox,
++  updatePlaudNoteStatus,
++} from '../../services/plaudInbox';
++
++function formatWhen(iso: string) {
++  try {
++    return new Date(iso).toLocaleString('de-AT', {
++      day: '2-digit',
++      month: '2-digit',
++      year: 'numeric',
++      hour: '2-digit',
++      minute: '2-digit',
++    });
++  } catch {
++    return iso;
++  }
++}
++
++export function PlaudInboxPanel({ focusId }: { focusId?: string | null }) {
++  const [notes, setNotes] = useState<PlaudNote[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [message, setMessage] = useState<string | null>(null);
++  const [expanded, setExpanded] = useState<string | null>(focusId ?? null);
++
++  const reload = useCallback(async () => {
++    setLoading(true);
++    const list = await fetchPlaudInbox(false);
++    setNotes(list);
++    setLoading(false);
++  }, []);
++
++  useEffect(() => {
++    void reload();
++  }, [reload]);
++
++  useEffect(() => {
++    if (focusId) setExpanded(focusId);
++  }, [focusId]);
++
++  async function onApplyTodos(note: PlaudNote) {
++    const n = applyPlaudActionItemsToTodos(note);
++    await updatePlaudNoteStatus(note.id, 'applied');
++    setMessage(`${n} Todo(s) aus „${note.title}“ angelegt.`);
++    await reload();
++  }
++
++  async function onDismiss(note: PlaudNote) {
++    await updatePlaudNoteStatus(note.id, 'dismissed');
++    setMessage(`Notiz verworfen.`);
++    await reload();
++  }
++
++  return (
++    <div id="plaud" className="mb-4 rounded-xl border-2 border-violet-400/70 bg-violet-500/10 p-3 space-y-3">
++      <div className="flex items-start justify-between gap-2">
++        <div>
++          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
++            <Mic className="w-4 h-4 text-violet-300" />
++            Plaud Note Inbox
++          </h2>
++          <p className="text-xs text-slate-400 mt-0.5">
++            Neue Transkripte/Summaries vom Plaud-Gerät (via Zapier).
++          </p>
++        </div>
++        <button
++          type="button"
++          onClick={() => void reload()}
++          className="text-xs text-violet-300 hover:text-violet-200"
++        >
++          Aktualisieren
++        </button>
++      </div>
++
++      {message && (
++        <p className="text-xs text-emerald-300 bg-emerald-500/10 rounded-lg px-2 py-1.5">{message}</p>
++      )}
++
++      {loading && <p className="text-xs text-slate-500">Lade Notizen…</p>}
++
++      {!loading && notes.length === 0 && (
++        <p className="text-xs text-slate-500">
++          Keine offenen Plaud-Notizen. Zapier auf <code className="text-slate-400">/api/plaud</code> zeigen.
++        </p>
++      )}
++
++      <ul className="space-y-2">
++        {notes.map((note) => {
++          const open = expanded === note.id;
++          return (
++            <li
++              key={note.id}
++              className="rounded-lg border border-violet-400/30 bg-slate-950/40 p-3 space-y-2"
++            >
++              <button
++                type="button"
++                className="w-full text-left"
++                onClick={() => setExpanded(open ? null : note.id)}
++              >
++                <div className="flex items-center justify-between gap-2">
++                  <span className="text-sm font-medium text-white truncate">{note.title}</span>
++                  <span className="text-[10px] text-slate-500 shrink-0">
++                    {formatWhen(note.recordedAt || note.receivedAt)}
++                  </span>
++                </div>
++                {note.summary && (
++                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{note.summary}</p>
++                )}
++              </button>
++
++              {open && (
++                <div className="space-y-2 pt-1 border-t border-violet-400/20">
++                  {note.summary && (
++                    <div>
++                      <p className="text-[10px] uppercase tracking-wide text-violet-300/80 mb-0.5">Summary</p>
++                      <p className="text-xs text-slate-300 whitespace-pre-wrap">{note.summary}</p>
++                    </div>
++                  )}
++                  {note.transcript && (
++                    <div>
++                      <p className="text-[10px] uppercase tracking-wide text-violet-300/80 mb-0.5">Transkript</p>
++                      <p className="text-xs text-slate-400 whitespace-pre-wrap max-h-48 overflow-y-auto">
++                        {note.transcript}
++                      </p>
++                    </div>
++                  )}
++                  {(note.actionItems?.length ?? 0) > 0 && (
++                    <div>
++                      <p className="text-[10px] uppercase tracking-wide text-violet-300/80 mb-0.5">Action Items</p>
++                      <ul className="text-xs text-slate-300 list-disc pl-4 space-y-0.5">
++                        {note.actionItems.map((item) => (
++                          <li key={item}>{item}</li>
++                        ))}
++                      </ul>
++                    </div>
++                  )}
++                  <div className="flex flex-wrap gap-2 pt-1">
++                    <button
++                      type="button"
++                      onClick={() => void onApplyTodos(note)}
++                      className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/20 text-violet-200 px-2.5 py-1.5 text-xs hover:bg-violet-500/30"
++                    >
++                      <ListTodo className="w-3.5 h-3.5" />
++                      Als Todos übernehmen
++                    </button>
++                    <button
++                      type="button"
++                      onClick={() => void updatePlaudNoteStatus(note.id, 'applied').then(reload)}
++                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 text-emerald-200 px-2.5 py-1.5 text-xs hover:bg-emerald-500/25"
++                    >
++                      <Check className="w-3.5 h-3.5" />
++                      Erledigt
++                    </button>
++                    <button
++                      type="button"
++                      onClick={() => void onDismiss(note)}
++                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-500/20 text-slate-300 px-2.5 py-1.5 text-xs hover:bg-slate-500/30"
++                    >
++                      <Trash2 className="w-3.5 h-3.5" />
++                      Verwerfen
++                    </button>
++                  </div>
++                </div>
++              )}
++            </li>
++          );
++        })}
++      </ul>
++    </div>
++  );
++}
+diff --git a/src/components/settings/PlaudSettings.tsx b/src/components/settings/PlaudSettings.tsx
+new file mode 100644
+index 0000000..f16b43d
+--- /dev/null
++++ b/src/components/settings/PlaudSettings.tsx
+@@ -0,0 +1,47 @@
++import { Mic } from 'lucide-react';
++import { Link } from 'react-router-dom';
++import { Card, CardContent, CardHeader } from '../ui/Card';
++
++export function PlaudSettings() {
++  const url = typeof window !== 'undefined'
++    ? `${window.location.origin}/api/plaud`
++    : 'https://pht-mastertool.vercel.app/api/plaud';
++
++  return (
++    <Card>
++      <CardHeader>
++        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
++          <Mic className="w-4 h-4 text-pht-300" />
++          Plaud Note
++        </h2>
++        <p className="text-xs text-slate-500 mt-1">
++          Im Tool:{' '}
++          <Link to="/plaud" className="text-pht-400 hover:text-pht-300">Plaud-Notizen</Link>
++          {' '}— Transkripte & Summaries aus dem Plaud-Gerät.
++        </p>
++      </CardHeader>
++      <CardContent className="space-y-2 text-xs text-slate-400">
++        <p>
++          <strong className="text-slate-300">Setup:</strong> Plaud Web → Explore → Integrations → Zapier.
++          Trigger: <strong className="text-slate-300">Transcript & Summary Ready</strong>.
++        </p>
++        <p>
++          Action: <strong className="text-slate-300">Webhooks by Zapier → POST</strong> an{' '}
++          <code className="text-pht-300 break-all">{url}</code>
++        </p>
++        <p>
++          Header: <code className="text-slate-300">Authorization: Bearer …</code>
++          (gleicher Wert wie <code className="text-slate-300">PLAUD_WEBHOOK_SECRET</code>).
++          Alternativ denselben Schlüssel als <code className="text-slate-300">?token=…</code> an die URL hängen.
++        </p>
++        <p>
++          Felder mappen: <code className="text-slate-300">title</code>,{' '}
++          <code className="text-slate-300">transcript</code>,{' '}
++          <code className="text-slate-300">summary</code>, optional{' '}
++          <code className="text-slate-300">actionItems</code>,{' '}
++          <code className="text-slate-300">recordedAt</code>.
++        </p>
++      </CardContent>
++    </Card>
++  );
++}
+diff --git a/src/pages/PlaudPage.tsx b/src/pages/PlaudPage.tsx
+new file mode 100644
+index 0000000..ba5741e
+--- /dev/null
++++ b/src/pages/PlaudPage.tsx
+@@ -0,0 +1,31 @@
++import { Mic } from 'lucide-react';
++import { useSearchParams } from 'react-router-dom';
++import { PlaudInboxPanel } from '../components/plaud/PlaudInboxPanel';
++import { PlaudSettings } from '../components/settings/PlaudSettings';
++import { useViewMode } from '../context/ViewModeContext';
++
++export function PlaudPage() {
++  const { isMobileView } = useViewMode();
++  const [searchParams] = useSearchParams();
++  const focusId = searchParams.get('note');
++
++  return (
++    <div className={`${isMobileView ? 'p-4' : 'p-6 lg:p-8'} max-w-3xl mx-auto`}>
++      <header className={`${isMobileView ? 'mb-4' : 'mb-6'}`}>
++        <h1 className={`${isMobileView ? 'text-xl' : 'text-2xl'} font-bold text-white flex items-center gap-2`}>
++          <Mic className={`${isMobileView ? 'w-6 h-6' : 'w-7 h-7'} text-pht-400`} />
++          Plaud Note
++        </h1>
++        <p className="text-slate-400 mt-1 text-xs sm:text-sm">
++          Gesprächsnotizen vom Plaud-Gerät — Transkript, Summary und Action Items im Mastertool.
++        </p>
++      </header>
++
++      <PlaudInboxPanel focusId={focusId} />
++
++      <div className="mt-6">
++        <PlaudSettings />
++      </div>
++    </div>
++  );
++}
+diff --git a/src/pages/SettingsPage.tsx b/src/pages/SettingsPage.tsx
+index acdc974..c2cf7ef 100644
+--- a/src/pages/SettingsPage.tsx
++++ b/src/pages/SettingsPage.tsx
+@@ -16,6 +16,7 @@ import { SupabaseSetupBanner } from '../components/SupabaseSetupBanner';
+ import { OutreachTemplateSettings } from '../components/settings/OutreachTemplateSettings';
+ import { DiscoveryLearningSettings } from '../components/settings/DiscoveryLearningSettings';
+ import { SnapaddySettings } from '../components/settings/SnapaddySettings';
++import { PlaudSettings } from '../components/settings/PlaudSettings';
+ import { HomeBaseSettings } from '../components/settings/HomeBaseSettings';
+ import { Card, CardContent } from '../components/ui/Card';
+ 
+@@ -95,6 +96,10 @@ export function SettingsPage() {
+             <SnapaddySettings />
+           </div>
+ 
++          <div className="mb-6">
++            <PlaudSettings />
++          </div>
++
+           {admin && (
+             <>
+               <div className="mb-6">
+diff --git a/src/services/customerDetailsStorage.ts b/src/services/customerDetailsStorage.ts
+index 8ed6480..9905d6c 100644
+--- a/src/services/customerDetailsStorage.ts
++++ b/src/services/customerDetailsStorage.ts
+@@ -39,6 +39,7 @@ export function getCustomerDetails(customerId: string): CustomerDetails {
+     lieferadresse: { ...emptyCustomerDetails().lieferadresse, ...existing.lieferadresse },
+     zugehoerigeFirmen: existing.zugehoerigeFirmen ?? [],
+     additionalContacts: existing.additionalContacts ?? [],
++    visitReports: Array.isArray(existing.visitReports) ? existing.visitReports : [],
+   };
+ }
+ 
+diff --git a/src/services/plaudInbox.ts b/src/services/plaudInbox.ts
+new file mode 100644
+index 0000000..04494df
+--- /dev/null
++++ b/src/services/plaudInbox.ts
+@@ -0,0 +1,71 @@
++import type { PlaudNote } from '../types/plaud';
++import { addManualTodo } from './todoStorage';
++
++const LOCAL_INBOX_KEY = 'pht-plaud-inbox';
++
++function readLocal(): PlaudNote[] {
++  try {
++    const raw = localStorage.getItem(LOCAL_INBOX_KEY);
++    return raw ? (JSON.parse(raw) as PlaudNote[]) : [];
++  } catch {
++    return [];
++  }
++}
++
++function writeLocal(notes: PlaudNote[]) {
++  localStorage.setItem(LOCAL_INBOX_KEY, JSON.stringify(notes));
++}
++
++export async function fetchPlaudInbox(all = false): Promise<PlaudNote[]> {
++  try {
++    const res = await fetch(`/api/plaud${all ? '?all=1' : ''}`, { credentials: 'include' });
++    if (!res.ok) throw new Error(`HTTP ${res.status}`);
++    const data = await res.json();
++    const notes = Array.isArray(data?.notes) ? (data.notes as PlaudNote[]) : [];
++    writeLocal(notes.filter((n) => n.status === 'pending'));
++    return notes;
++  } catch {
++    return readLocal();
++  }
++}
++
++export async function updatePlaudNoteStatus(
++  id: string,
++  status: PlaudNote['status'],
++): Promise<PlaudNote | null> {
++  try {
++    const res = await fetch('/api/plaud', {
++      method: 'PATCH',
++      credentials: 'include',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ id, status }),
++    });
++    if (!res.ok) return null;
++    const data = await res.json();
++    const local = readLocal().filter((n) => n.id !== id);
++    writeLocal(local);
++    return (data?.note as PlaudNote) ?? null;
++  } catch {
++    writeLocal(readLocal().filter((n) => n.id !== id));
++    return null;
++  }
++}
++
++/** Create todos from Plaud action items (local). */
++export function applyPlaudActionItemsToTodos(note: PlaudNote): number {
++  const due = new Date();
++  due.setDate(due.getDate() + 1);
++  const dueDate = due.toISOString().slice(0, 10);
++  let count = 0;
++  for (const item of note.actionItems ?? []) {
++    const title = item.trim();
++    if (!title) continue;
++    addManualTodo(`[Plaud] ${title}`, dueDate);
++    count += 1;
++  }
++  if (!count && note.summary) {
++    addManualTodo(`[Plaud] ${note.title}: nachverfolgen`, dueDate);
++    count = 1;
++  }
++  return count;
++}
+diff --git a/src/types/customerDetails.ts b/src/types/customerDetails.ts
+index 37e054d..1e0cd68 100644
+--- a/src/types/customerDetails.ts
++++ b/src/types/customerDetails.ts
+@@ -18,6 +18,19 @@ export interface RelatedCompany {
+   bcCustomerNo?: string;
+ }
+ 
++/** Ein Besuchstag mit Keywords für die Übersicht (eingeklappt sichtbar). */
++export interface VisitReport {
++  id: string;
++  /** ISO-Datum YYYY-MM-DD */
++  date: string;
++  /** Kurz-Stichworte, damit man weiß worum es geht */
++  keywords: string[];
++  /** Freitext Besuchsbericht */
++  notes: string;
++  /** Offen = ausgeklappt in der UI (nur lokal, optional) */
++  open?: boolean;
++}
++
+ export interface CustomerDetails {
+   ansprechperson: ContactPerson;
+   additionalContacts?: ContactPerson[];
+@@ -25,6 +38,8 @@ export interface CustomerDetails {
+   lieferadresse: CustomerAddress;
+   lieferadresseWieRechnung: boolean;
+   zugehoerigeFirmen: RelatedCompany[];
++  /** Besuchsberichte chronologisch (neueste zuerst empfohlen) */
++  visitReports?: VisitReport[];
+   bcCustomerId?: string;
+   bcCustomerNumber?: string;
+   bcLastSync?: string;
+@@ -53,5 +68,16 @@ export function emptyCustomerDetails(): CustomerDetails {
+     lieferadresse: { ...EMPTY_ADDRESS },
+     lieferadresseWieRechnung: true,
+     zugehoerigeFirmen: [],
++    visitReports: [],
++  };
++}
++
++export function createEmptyVisitReport(date = new Date().toISOString().slice(0, 10)): VisitReport {
++  return {
++    id: `visit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
++    date,
++    keywords: [],
++    notes: '',
++    open: true,
+   };
+ }
+diff --git a/src/types/plaud.ts b/src/types/plaud.ts
+new file mode 100644
+index 0000000..25bbc0f
+--- /dev/null
++++ b/src/types/plaud.ts
+@@ -0,0 +1,10 @@
++export interface PlaudNote {
++  id: string;
++  title: string;
++  transcript: string;
++  summary: string;
++  actionItems: string[];
++  recordedAt: string;
++  receivedAt: string;
++  status: 'pending' | 'applied' | 'dismissed';
++}
+diff --git a/vercel.json b/vercel.json
+index b88ff67..032f55f 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -82,6 +82,10 @@
+       "source": "/api/snapaddy",
+       "destination": "/api/snapaddy"
+     },
++    {
++      "source": "/api/plaud",
++      "destination": "/api/plaud"
++    },
+     {
+       "source": "/api/schedule-proposal",
+       "destination": "/api/schedule?route=proposal"
+diff --git a/vite.config.ts b/vite.config.ts
+index 0497bb3..c7672be 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -383,6 +383,7 @@ export default defineConfig(({ mode }) => {
+           mountVercelApi('/api/auth/users', './api/auth.js', { passOptions: true, route: 'users' });
+           mountVercelApi('/api/auth/change-password', './api/auth.js', { passOptions: true, route: 'change-password' });
+           mountVercelApi('/api/snapaddy', './api/snapaddy.js', { passOptions: true });
++          mountVercelApi('/api/plaud', './api/plaud.js', { passOptions: true });
+           mountVercelApi('/api/schedule-proposal', './api/schedule.js', { passOptions: true, route: 'proposal' });
+           mountVercelApi('/api/schedule-confirm', './api/schedule.js', { route: 'confirm' });
+           mountVercelApi('/api/schedule-wish', './api/schedule.js', { passOptions: true, route: 'wish' });
