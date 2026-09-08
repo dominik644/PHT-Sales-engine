@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { formatMoney } from "@/lib/money";
 import { useCart } from "@/context/CartContext";
-import { StoreHero } from "@/components/StoreHero";
 
 type FormState = {
   address: string;
@@ -139,81 +138,88 @@ export default function CheckoutPage() {
 
   if (placed) {
     return (
-      <>
-        <StoreHero
-          compact
-          headline="Goods that earn their place."
-          support="Ihre Bestellanforderung ist eingereicht und geht in die Freigabe."
-          primaryHref="/account"
-          primaryLabel="Zur Historie"
-          secondaryHref="/shop"
-          secondaryLabel="Weiter einkaufen"
-        />
-        <div className="section">
-          <div className="success-banner" style={{ maxWidth: 720 }}>
-            <p className="eyebrow">Auftrag eingereicht</p>
-            <h2 style={{ fontFamily: "var(--font-display)", margin: "0.35rem 0" }}>
-              {placed.number}
-            </h2>
-            <p className="muted" style={{ margin: 0 }}>
-              Status: <strong>{placed.status}</strong>
-              {placed.discountCents > 0
-                ? ` · Rabatt ${formatMoney(placed.discountCents)}`
-                : ""}
-              {" · "}
-              Summe {formatMoney(placed.totalCents)}
-            </p>
-            {placed.paymentTermLabel ? (
-              <p className="muted">Zahlungsbedingung: {placed.paymentTermLabel}</p>
-            ) : null}
-            <p className="muted">{placed.message}</p>
+      <div className="checkout-page">
+        <header className="checkout-steps" aria-label="Bestellschritte">
+          <span>1. Warenkorb</span>
+          <span>2. Kasse</span>
+          <span className="is-active">3. Bestätigung</span>
+        </header>
+        <div className="success-banner">
+          <p className="eyebrow">Auftrag eingereicht</p>
+          <h1>{placed.number}</h1>
+          <p className="muted">
+            Status: <strong>{placed.status}</strong>
+            {placed.discountCents > 0
+              ? ` · Rabatt ${formatMoney(placed.discountCents)}`
+              : ""}
+            {" · "}
+            Summe {formatMoney(placed.totalCents)}
+          </p>
+          {placed.paymentTermLabel ? (
+            <p className="muted">Zahlungsbedingung: {placed.paymentTermLabel}</p>
+          ) : null}
+          <p className="muted">{placed.message}</p>
+          <div className="cta-row">
+            <Link href="/account" className="btn btn--primary">
+              Zur Auftragshistorie
+            </Link>
+            <Link href="/shop" className="btn btn--ink">
+              Weiter einkaufen
+            </Link>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <StoreHero
-        compact
-        headline="Goods that earn their place."
-        support="Bestellanforderung mit Freigabe Produktionsleiter → Einkauf. Zahlungsbedingungen und Rabatte nach PHT-Vorgabe."
-        primaryHref="/shop"
-        primaryLabel="Shop the collection"
-      />
+    <div className="checkout-page">
+      <header className="checkout-steps" aria-label="Bestellschritte">
+        <Link href="/warenkorb">1. Warenkorb</Link>
+        <span className="is-active">2. Kasse</span>
+        <span>3. Bestätigung</span>
+      </header>
+
+      <div className="cart-page__head">
+        <div>
+          <p className="eyebrow">Bestellung</p>
+          <h1>Kasse</h1>
+          <p className="muted">
+            Lieferadresse, Zahlungsbedingung und optionaler Rabattcode.
+          </p>
+        </div>
+      </div>
 
       {!me ? (
-        <div className="section">
-          <div className="panel store-panel">
-            <p>B2B-Login erforderlich.</p>
-            <div className="cta-row">
-              <Link href="/login" className="btn btn--primary">
-                Anmelden
-              </Link>
-              <Link href="/register" className="btn btn--ink">
-                Registrieren
-              </Link>
-            </div>
-          </div>
-        </div>
-      ) : itemCount === 0 ? (
-        <div className="section">
-          <div className="panel store-panel">
-            <p>Warenkorb ist leer.</p>
-            <Link href="/shop" className="btn btn--primary">
-              Zum Shop
+        <div className="panel store-panel">
+          <h2>B2B-Anmeldung erforderlich</h2>
+          <p className="muted">
+            Bestellungen sind nur für registrierte Firmenkunden möglich.
+          </p>
+          <div className="cta-row">
+            <Link href="/login" className="btn btn--primary">
+              Anmelden
+            </Link>
+            <Link href="/register" className="btn btn--ink">
+              Firma registrieren
             </Link>
           </div>
         </div>
+      ) : itemCount === 0 ? (
+        <div className="empty-state">
+          <p>Warenkorb ist leer.</p>
+          <Link href="/shop" className="btn btn--primary">
+            Zum Sortiment
+          </Link>
+        </div>
       ) : (
-        <div className="checkout section" style={{ paddingTop: "0.5rem" }}>
+        <div className="checkout">
           <form className="panel store-panel" onSubmit={handleSubmit} noValidate>
             <h2>Lieferung · {me.companyName}</h2>
-            <p className="muted">Besteller: {me.name}</p>
+            <p className="muted">Besteller: {me.name} · {me.email}</p>
             <div className="form-grid">
               <label>
-                Adresse
+                Straße und Hausnummer
                 <input
                   value={form.address}
                   onChange={(e) =>
@@ -223,7 +229,7 @@ export default function CheckoutPage() {
                 />
               </label>
               <label>
-                Stadt
+                Ort
                 <input
                   value={form.city}
                   onChange={(e) =>
@@ -262,7 +268,7 @@ export default function CheckoutPage() {
                 <p className="muted">{selectedTerm.description}</p>
               ) : null}
               <label>
-                Rabattcode (optional, mit Laufzeit)
+                Rabattcode (optional)
                 <input
                   value={form.discountCode}
                   onChange={(e) =>
@@ -281,7 +287,7 @@ export default function CheckoutPage() {
                   ? "Firma noch nicht freigeschaltet"
                   : submitting
                     ? "Wird eingereicht…"
-                    : `Zur Freigabe senden · ${formatMoney(subtotalCents)}`}
+                    : `Bestellung zur Freigabe senden · ${formatMoney(subtotalCents)}`}
               </button>
             </div>
           </form>
@@ -296,13 +302,16 @@ export default function CheckoutPage() {
                 <span>{formatMoney(product.priceCents * quantity)}</span>
               </div>
             ))}
-            <div className="summary-line">
+            <div className="summary-line summary-line--total">
               <span>Zwischensumme</span>
               <span>{formatMoney(subtotalCents)}</span>
             </div>
+            <Link href="/warenkorb" className="text-btn">
+              Warenkorb bearbeiten
+            </Link>
           </aside>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -7,13 +7,14 @@ export function Footer() {
         <div>
           <p className="brand__mark brand__mark--small">PHT</p>
           <p className="muted">
-            Eigenständiger B2B-Webshop — unabhängig vom Mastertool.
+            Hygiene B2B-Webshop — eigenständig, ERP-angebunden.
           </p>
         </div>
         <div className="site-footer__links">
-          <Link href="/shop">Shop all</Link>
-          <Link href="/account">Historie</Link>
-          <Link href="/login">Login</Link>
+          <Link href="/shop">Sortiment</Link>
+          <Link href="/warenkorb">Warenkorb</Link>
+          <Link href="/account">Mein Konto</Link>
+          <Link href="/login">Anmelden</Link>
         </div>
       </div>
     </footer>

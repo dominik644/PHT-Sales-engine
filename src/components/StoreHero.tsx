@@ -2,14 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=2000&q=80";
+  "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=2000&q=80";
 
 export function StoreHero({
   brand = "PHT",
   headline,
   support,
   primaryHref = "/shop",
-  primaryLabel = "Shop the collection",
+  primaryLabel = "Zum Sortiment",
   secondaryHref,
   secondaryLabel,
   compact = false,
@@ -26,12 +26,12 @@ export function StoreHero({
   return (
     <section
       className={`hero ${compact ? "hero--compact" : ""}`}
-      aria-label="PHT hero"
+      aria-label="PHT Hygiene Hero"
     >
       <div className="hero__media">
         <Image
           src={HERO_IMAGE}
-          alt="Bright modern interior with curated furniture and lighting"
+          alt="PHT Hygiene — professionelle Hygienetechnik"
           fill
           priority
           sizes="100vw"
@@ -40,6 +40,7 @@ export function StoreHero({
       </div>
       <div className="hero__content">
         <p className="hero__brand">{brand}</p>
+        <p className="hero__eyebrow">Hygiene</p>
         <h1 className="hero__headline">{headline}</h1>
         <p className="hero__support">{support}</p>
         <div className="cta-row">

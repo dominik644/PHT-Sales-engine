@@ -1,11 +1,13 @@
-# PHT Webshop (B2B)
+# PHT Hygiene Webshop (B2B)
 
-Eigenständiger B2B-Webshop — **kein Modul und keine Abhängigkeit vom PHT Mastertool**.
+Eigenständiger B2B-Webshop für **PHT Hygiene** — **kein Modul und keine Abhängigkeit vom PHT Mastertool**.
 
 Eigene App, eigene Datenbank, eigener Admin, eigener Deploy. Es gibt keine gemeinsame
 Auth, keine geteilten Packages und keine Runtime-Kopplung zum Mastertool
 (`pht-mastertool`). Anbindung nach außen nur über den konfigurierbaren ERP-Adapter
 (Auftrag + Rechnung).
+
+Ablauf angelehnt an professionelle Fachshops (Suche, Kategorien, Warenkorb, Kasse).
 
 ## Features
 

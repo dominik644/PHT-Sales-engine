@@ -20,16 +20,16 @@ const body = Figtree({
 
 export const metadata: Metadata = {
   title: {
-    default: "PHT Webshop",
-    template: "%s · PHT Webshop",
+    default: "PHT Hygiene",
+    template: "%s · PHT Hygiene",
   },
   description:
-    "PHT Webshop — eigenständiger B2B-Shop für Beleuchtung, Audio, Möbel und Home Tech.",
+    "PHT Hygiene B2B-Webshop — Hygienetechnik, Desinfektion und Verbrauchsmaterial mit ERP-Anbindung.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} h-full`}>
+    <html lang="de" className={`${display.variable} ${body.variable} h-full`}>
       <body className="page-shell antialiased">
         <CartProvider>
           <Header />

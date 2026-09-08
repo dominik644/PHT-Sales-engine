@@ -27,21 +27,21 @@ export function CartDrawer() {
       <aside
         className={`cart-drawer ${isOpen ? "is-open" : ""}`}
         aria-hidden={!isOpen}
-        aria-label="Shopping cart"
+        aria-label="Warenkorb"
         inert={!isOpen ? true : undefined}
       >
         <div className="cart-drawer__head">
-          <h2>Your cart</h2>
+          <h2>Warenkorb</h2>
           <button type="button" className="text-btn" onClick={closeCart}>
-            Close
+            Schließen
           </button>
         </div>
 
         {itemCount === 0 ? (
           <div className="cart-empty">
-            <p>Your cart is empty.</p>
+            <p>Ihr Warenkorb ist leer.</p>
             <Link href="/shop" className="btn btn--primary" onClick={closeCart}>
-              Browse the shop
+              Zum Sortiment
             </Link>
           </div>
         ) : (
@@ -63,15 +63,13 @@ export function CartDrawer() {
                       <Link href={`/product/${product.slug}`} onClick={closeCart}>
                         {product.name}
                       </Link>
-                      <span>
-                        {formatMoney(product.priceCents * quantity)}
-                      </span>
+                      <span>{formatMoney(product.priceCents * quantity)}</span>
                     </div>
                     <div className="cart-line__controls">
                       <div className="qty">
                         <button
                           type="button"
-                          aria-label="Decrease quantity"
+                          aria-label="Menge verringern"
                           onClick={() => setQuantity(product.id, quantity - 1)}
                         >
                           −
@@ -79,7 +77,7 @@ export function CartDrawer() {
                         <span>{quantity}</span>
                         <button
                           type="button"
-                          aria-label="Increase quantity"
+                          aria-label="Menge erhöhen"
                           onClick={() => setQuantity(product.id, quantity + 1)}
                         >
                           +
@@ -90,7 +88,7 @@ export function CartDrawer() {
                         className="text-btn"
                         onClick={() => removeItem(product.id)}
                       >
-                        Remove
+                        Entfernen
                       </button>
                     </div>
                   </div>
@@ -99,15 +97,25 @@ export function CartDrawer() {
             </ul>
             <div className="cart-drawer__foot">
               <div className="cart-subtotal">
-                <span>Subtotal</span>
+                <span>Zwischensumme (netto)</span>
                 <strong>{formatMoney(subtotalCents)}</strong>
               </div>
+              <p className="muted cart-hint">
+                Rabatte und Zahlungsbedingungen werden an der Kasse geprüft.
+              </p>
+              <Link
+                href="/warenkorb"
+                className="btn btn--ink btn--block"
+                onClick={closeCart}
+              >
+                Warenkorb öffnen
+              </Link>
               <Link
                 href="/checkout"
                 className="btn btn--primary btn--block"
                 onClick={closeCart}
               >
-                Checkout
+                Zur Kasse
               </Link>
             </div>
           </>

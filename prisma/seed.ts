@@ -2,130 +2,139 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/** PHT Hygiene — B2B Fachsortiment (Hygienetechnik & Verbrauchsmaterial) */
 const products = [
   {
     erpId: "ERP-PHT-01",
-    sku: "PHT-ARC-LAMP",
-    slug: "arc-desk-lamp",
-    name: "Arc Desk Lamp",
-    category: "Lighting",
-    tagline: "Focused light, quiet presence.",
+    sku: "PHT-WASHX-PRO",
+    slug: "handwaschbecken-washx-pro",
+    name: "Handwaschbecken WashX Pro",
+    category: "Personalhygiene",
+    tagline: "Sensor-Handwaschbecken für hygienesensible Bereiche.",
     description:
-      "A balanced steel arc with a warm dimmable LED. Built for long work sessions without glare or clutter.",
-    priceCents: 18900,
+      "Edelstahl-Handwaschbecken mit berührungsloser Armatur, Seifen- und Desinfektionsdosierung. Für Lebensmittelproduktion, Pharma und Gemeinschaftsverpflegung.",
+    priceCents: 189000,
     imageUrl:
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1200&q=80",
-    accent: "#1F4B3A",
-    stock: 42,
+      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=80",
+    accent: "#1B2A34",
+    stock: 24,
   },
   {
     erpId: "ERP-PHT-02",
-    sku: "PHT-PULSE-HP",
-    slug: "pulse-headphones",
-    name: "Pulse Headphones",
-    category: "Audio",
-    tagline: "Studio clarity for everyday listening.",
+    sku: "PHT-ENTRYX",
+    slug: "zutrittskontrolle-entryx",
+    name: "Zutrittskontrolle EntryX",
+    category: "Zutritt",
+    tagline: "Personalschleuse mit Hygiene-Freigabe.",
     description:
-      "Closed-back wireless cans with adaptive noise control and a 36-hour charge. Tuned for detail, not hype.",
-    priceCents: 24900,
+      "Zutrittssystem mit Hand- und Sohlendesinfektionsprüfung vor Produktionsfreigabe. Protokollierbar, anbindbar an bestehende Zugangssysteme.",
+    priceCents: 649000,
     imageUrl:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80",
-    accent: "#1A2A3A",
-    stock: 28,
+      "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=1400&q=80",
+    accent: "#24353F",
+    stock: 8,
   },
   {
     erpId: "ERP-PHT-03",
-    sku: "PHT-NORD-CHAIR",
-    slug: "nord-lounge-chair",
-    name: "Nord Lounge Chair",
-    category: "Furniture",
-    tagline: "Sit lower. Stay longer.",
+    sku: "PHT-HELIX",
+    slug: "sohlenreinigung-helix",
+    name: "Sohlenreinigung HeliX",
+    category: "Sohlenhygiene",
+    tagline: "Automatische Sohlenwaschung am Eingang.",
     description:
-      "Oak frame, wool upholstery, and a seat angle made for reading. Assembled in small batches.",
-    priceCents: 62000,
+      "Kompakte Sohlenreinigungsanlage für hohe Frequenz. Edelstahlgehäuse, Bürstenwechsel ohne Werkzeug, geeignet für Nassbereiche.",
+    priceCents: 428000,
     imageUrl:
-      "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=1200&q=80",
-    accent: "#3D2F24",
+      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1400&q=80",
+    accent: "#2C3E48",
     stock: 12,
   },
   {
     erpId: "ERP-PHT-04",
-    sku: "PHT-TERRA-SET",
-    slug: "terra-ceramic-set",
-    name: "Terra Ceramic Set",
-    category: "Kitchen",
-    tagline: "Four cups, one kiln.",
+    sku: "PHT-DES-5L",
+    slug: "flaechendesinfektion-5l",
+    name: "Flächendesinfektion 5 l",
+    category: "Desinfektion",
+    tagline: "Gebrauchsfertig für Produktionsflächen.",
     description:
-      "Hand-thrown stoneware with a matte ash glaze. Microwave safe, dishwasher ready, endlessly stackable.",
-    priceCents: 9600,
+      "Alkoholbasierte Flächendesinfektion für Edelstahl und glatte Oberflächen. Gebinde 5 Liter, mit Sicherheitsdatenblatt und Anwendungshinweis.",
+    priceCents: 4890,
     imageUrl:
-      "https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=1200&q=80",
-    accent: "#5C4033",
-    stock: 64,
+      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1400&q=80",
+    accent: "#33424A",
+    stock: 320,
   },
   {
     erpId: "ERP-PHT-05",
-    sku: "PHT-FLUX-THERM",
-    slug: "flux-thermostat",
-    name: "Flux Thermostat",
-    category: "Home Tech",
-    tagline: "Climate control without the noise.",
+    sku: "PHT-HAND-1L",
+    slug: "haendedesinfektion-1l",
+    name: "Händedesinfektion 1 l",
+    category: "Desinfektion",
+    tagline: "Für Spendersysteme und Nachfüllung.",
     description:
-      "A wall unit that learns your schedule and keeps rooms steady. Quiet motors, honest materials, clear display.",
-    priceCents: 17900,
+      "Viruzides Händedesinfektionsmittel für Nachfüllung in PHT-Spendern. DIN-EN-geprüft, hautverträglich mit Rückfetter.",
+    priceCents: 1290,
     imageUrl:
-      "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1200&q=80",
-    accent: "#2C3E50",
-    stock: 35,
+      "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=1400&q=80",
+    accent: "#1F3038",
+    stock: 800,
   },
   {
     erpId: "ERP-PHT-06",
-    sku: "PHT-LOOM-THROW",
-    slug: "loom-merino-throw",
-    name: "Loom Merino Throw",
-    category: "Textiles",
-    tagline: "Soft weight for cooler evenings.",
+    sku: "PHT-PAPER-TOWEL",
+    slug: "papierhandtuecher-z-falz",
+    name: "Papierhandtücher Z-Falz",
+    category: "Verbrauchsmaterial",
+    tagline: "Karton à 3.200 Blatt für Spender.",
     description:
-      "100% merino, loom-finished edges, and a drape that works on sofas or beds. Machine washable on gentle.",
-    priceCents: 14800,
+      "2-lagige Papierhandtücher, Z-Falz, hohe Saugkraft. Passend für gängige Spendersysteme in Hygienezonen und Sozialräumen.",
+    priceCents: 3490,
     imageUrl:
-      "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=1200&q=80",
-    accent: "#4A5568",
-    stock: 50,
+      "https://images.unsplash.com/photo-1584622781564-1d987f7333c1?auto=format&fit=crop&w=1400&q=80",
+    accent: "#2A3840",
+    stock: 450,
   },
   {
     erpId: "ERP-PHT-07",
-    sku: "PHT-ORBIT-CLOCK",
-    slug: "orbit-desk-clock",
-    name: "Orbit Desk Clock",
-    category: "Objects",
-    tagline: "Time, distilled.",
+    sku: "PHT-FOAM-CLEAN",
+    slug: "schaumreiniger-green",
+    name: "Schaumreiniger Green",
+    category: "Reinigung",
+    tagline: "Wasser- und energiesparende Schaumreinigung.",
     description:
-      "Brushed aluminum case, silent quartz movement, and a face you can read from across the room.",
-    priceCents: 8400,
+      "Schaumreiniger für Anlagen und Böden in der Lebensmittelindustrie. Dosierbar, materialschonend, mit optionalem GREEN-Button-Modul kompatibel.",
+    priceCents: 7890,
     imageUrl:
-      "https://images.unsplash.com/photo-1563861826100-9cb868fdbe1c?auto=format&fit=crop&w=1200&q=80",
-    accent: "#334155",
-    stock: 73,
+      "https://images.unsplash.com/photo-1563453392212-326f5e854473?auto=format&fit=crop&w=1400&q=80",
+    accent: "#3A464C",
+    stock: 160,
   },
   {
     erpId: "ERP-PHT-08",
-    sku: "PHT-RIDGE-BOTTLE",
-    slug: "ridge-bottle",
-    name: "Ridge Bottle",
-    category: "Everyday",
-    tagline: "Carry cold farther.",
+    sku: "PHT-SERVICE-HYG",
+    slug: "hygiene-wartungsvertrag",
+    name: "Hygiene-Wartungsvertrag",
+    category: "Service",
+    tagline: "Inspektion und Ersatzteil-Support 12 Monate.",
     description:
-      "Double-wall steel, 750 ml, powder-coated shell. Keeps drinks cold for 24 hours without sweating.",
-    priceCents: 4200,
+      "Jährliche Prüfung von WashX/EntryX/HeliX, Verbrauchsmaterial-Empfehlung und priorisierter Support für Partnerbetriebe.",
+    priceCents: 129000,
     imageUrl:
-      "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1200&q=80",
-    accent: "#0F766E",
-    stock: 120,
+      "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1400&q=80",
+    accent: "#243038",
+    stock: 999,
   },
 ];
 
 async function main() {
+  await prisma.productDatasheet.deleteMany({});
+  await prisma.orderItem.deleteMany({});
+  await prisma.orderEvent.deleteMany({});
+  await prisma.invoice.deleteMany({});
+  await prisma.orderApproval.deleteMany({});
+  await prisma.order.deleteMany({});
+  await prisma.product.deleteMany({});
+
   for (const product of products) {
     await prisma.product.upsert({
       where: { sku: product.sku },
@@ -195,151 +204,173 @@ async function main() {
     });
   }
 
-  const now = new Date();
-  const in90 = new Date(now.getTime() + 90 * 86400000);
-  await prisma.discount.upsert({
-    where: { code: "PHT-B2B-10" },
+  const termVorkasse = await prisma.paymentTerm.upsert({
+    where: { code: "VORKASSE" },
     update: {
-      name: "B2B 10% Einführungsrabatt",
-      type: "percent",
-      percentOff: 10,
-      validFrom: now,
-      validTo: in90,
-      active: true,
-      companyId: null,
-    },
-    create: {
-      code: "PHT-B2B-10",
-      name: "B2B 10% Einführungsrabatt",
-      type: "percent",
-      percentOff: 10,
-      minSubtotalCents: 0,
-      validFrom: now,
-      validTo: in90,
-      active: true,
-      companyId: null,
-    },
-  });
-
-  const paymentTerms = [
-    {
-      code: "VORKASSE",
-      name: "Vorauskasse 100%",
-      description: "Vollständige Zahlung vor Auftragsbestätigung / Produktion.",
+      name: "Vorauskasse",
+      description: "100 % Zahlung vor Auslieferung",
       depositPercent: 100,
       balancePercent: 0,
       balanceDueDays: 0,
-      sortOrder: 0,
+      active: true,
+      sortOrder: 1,
     },
-    {
-      code: "50-50",
+    create: {
+      code: "VORKASSE",
+      name: "Vorauskasse",
+      description: "100 % Zahlung vor Auslieferung",
+      depositPercent: 100,
+      balancePercent: 0,
+      balanceDueDays: 0,
+      active: true,
+      sortOrder: 1,
+    },
+  });
+
+  await prisma.paymentTerm.upsert({
+    where: { code: "50-50" },
+    update: {
       name: "50/50",
-      description: "50% bei Auftragserteilung, 50% vor Lieferung.",
+      description: "50 % bei Auftrag, 50 % vor Lieferung",
       depositPercent: 50,
       balancePercent: 50,
       balanceDueDays: 0,
-      sortOrder: 1,
+      active: true,
+      sortOrder: 2,
     },
-    {
-      code: "NET-30",
-      name: "Netto 30 Tage",
-      description: "100% zahlbar innerhalb von 30 Tagen nach Rechnung.",
+    create: {
+      code: "50-50",
+      name: "50/50",
+      description: "50 % bei Auftrag, 50 % vor Lieferung",
+      depositPercent: 50,
+      balancePercent: 50,
+      balanceDueDays: 0,
+      active: true,
+      sortOrder: 2,
+    },
+  });
+
+  await prisma.paymentTerm.upsert({
+    where: { code: "NET-30" },
+    update: {
+      name: "Netto 30",
+      description: "Zahlung innerhalb von 30 Tagen",
       depositPercent: 0,
       balancePercent: 100,
       balanceDueDays: 30,
-      sortOrder: 2,
+      active: true,
+      sortOrder: 3,
     },
-  ];
-
-  for (const term of paymentTerms) {
-    await prisma.paymentTerm.upsert({
-      where: { code: term.code },
-      update: { ...term, active: true },
-      create: { ...term, active: true },
-    });
-  }
-
-  const fiftyFifty = await prisma.paymentTerm.findUnique({
-    where: { code: "50-50" },
+    create: {
+      code: "NET-30",
+      name: "Netto 30",
+      description: "Zahlung innerhalb von 30 Tagen",
+      depositPercent: 0,
+      balancePercent: 100,
+      balanceDueDays: 30,
+      active: true,
+      sortOrder: 3,
+    },
   });
-  if (fiftyFifty) {
-    await prisma.company.update({
-      where: { id: company.id },
-      data: { defaultPaymentTermId: fiftyFifty.id },
-    });
-  }
 
-  const { writeSimplePdf } = await import("../src/lib/pdf");
+  await prisma.company.update({
+    where: { id: company.id },
+    data: { defaultPaymentTermId: termVorkasse.id },
+  });
+
+  const from = new Date();
+  const to = new Date(Date.now() + 90 * 86400000);
+  await prisma.discount.upsert({
+    where: { code: "PHT-B2B-10" },
+    update: {
+      name: "PHT Hygiene Partner 10 %",
+      type: "percent",
+      percentOff: 10,
+      amountOffCents: null,
+      minSubtotalCents: 0,
+      validFrom: from,
+      validTo: to,
+      active: true,
+    },
+    create: {
+      code: "PHT-B2B-10",
+      name: "PHT Hygiene Partner 10 %",
+      type: "percent",
+      percentOff: 10,
+      amountOffCents: null,
+      minSubtotalCents: 0,
+      validFrom: from,
+      validTo: to,
+      active: true,
+    },
+  });
+
+  const wash = await prisma.product.findUnique({ where: { sku: "PHT-WASHX-PRO" } });
+  const des = await prisma.product.findUnique({ where: { sku: "PHT-DES-5L" } });
+
+  const { writeFile, mkdir } = await import("node:fs/promises");
   const path = await import("node:path");
-  const datasheetSpecs = [
-    {
-      sku: "PHT-ARC-LAMP",
-      title: "Technisches Datenblatt Arc Desk Lamp",
-      fileName: "arc-desk-lamp.pdf",
-      filePath: "datasheets/arc-desk-lamp.pdf",
-      lines: [
-        "PHT — Technisches Datenblatt",
-        "Arc Desk Lamp",
-        "SKU: PHT-ARC-LAMP",
-        "Spannung: 230V / LED dimmbar",
-        "Material: Stahl, pulverbeschichtet",
-        "Garantie: 24 Monate",
-      ],
-    },
-    {
-      sku: "PHT-PULSE-HP",
-      title: "Technisches Datenblatt Pulse Headphones",
-      fileName: "pulse-headphones.pdf",
-      filePath: "datasheets/pulse-headphones.pdf",
-      lines: [
-        "PHT — Technisches Datenblatt",
-        "Pulse Headphones",
-        "SKU: PHT-PULSE-HP",
-        "Akku: 36 Stunden",
-        "ANC: adaptiv",
-        "Anschluss: USB-C / Bluetooth 5.3",
-      ],
-    },
-  ];
+  await mkdir(path.join(process.cwd(), "public", "datasheets"), { recursive: true });
 
-  for (const spec of datasheetSpecs) {
-    const product = await prisma.product.findUnique({ where: { sku: spec.sku } });
-    if (!product) continue;
-    writeSimplePdf(path.join(process.cwd(), "public", spec.filePath), spec.lines);
-    const existing = await prisma.productDatasheet.findFirst({
-      where: { productId: product.id, filePath: spec.filePath },
+  async function writeSheet(
+    productId: string,
+    sku: string,
+    title: string,
+    lines: string[],
+  ) {
+    const fileName = `${sku.toLowerCase()}-datenblatt.pdf`;
+    const filePath = `datasheets/${fileName}`;
+    const content = [
+      "%PDF-1.1",
+      "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj",
+      "2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj",
+      "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj",
+      `4 0 obj<< /Length ${200 + lines.join(" ").length} >>stream`,
+      "BT /F1 12 Tf 50 740 Td",
+      ...lines.map((line, i) =>
+        i === 0 ? `(${line}) Tj` : `0 -18 Td (${line}) Tj`,
+      ),
+      "ET",
+      "endstream endobj",
+      "5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj",
+      "xref",
+      "0 6",
+      "0000000000 65535 f ",
+      "0000000009 00000 n ",
+      "0000000058 00000 n ",
+      "0000000115 00000 n ",
+      "0000000266 00000 n ",
+      "0000000560 00000 n ",
+      "trailer<< /Size 6 /Root 1 0 R >>",
+      "startxref",
+      "640",
+      "%%EOF",
+    ].join("\n");
+    await writeFile(path.join(process.cwd(), "public", filePath), content);
+    await prisma.productDatasheet.create({
+      data: { productId, title, fileName, filePath },
     });
-    if (existing) {
-      await prisma.productDatasheet.update({
-        where: { id: existing.id },
-        data: {
-          title: spec.title,
-          fileName: spec.fileName,
-          mimeType: "application/pdf",
-        },
-      });
-    } else {
-      await prisma.productDatasheet.create({
-        data: {
-          productId: product.id,
-          title: spec.title,
-          fileName: spec.fileName,
-          filePath: spec.filePath,
-          mimeType: "application/pdf",
-          sortOrder: 0,
-        },
-      });
-    }
   }
 
-  console.log(`Seeded ${products.length} products`);
-  console.log("Demo B2B company: Müller Fertigung GmbH (active)");
-  console.log("  produktion@mueller-fertigung.example / demo-b2b-1234");
-  console.log("  einkauf@mueller-fertigung.example / demo-b2b-1234");
-  console.log("  admin@mueller-fertigung.example / demo-b2b-1234");
+  if (wash) {
+    await writeSheet(wash.id, wash.sku, "Technisches Datenblatt", [
+      "PHT Hygiene - Technisches Datenblatt",
+      `SKU: ${wash.sku}`,
+      "Handwaschbecken WashX Pro",
+      "Edelstahl | Sensorarmatur | Dosierung",
+    ]);
+  }
+  if (des) {
+    await writeSheet(des.id, des.sku, "Sicherheitsdatenblatt", [
+      "PHT Hygiene - Sicherheitsdatenblatt",
+      `SKU: ${des.sku}`,
+      "Flaechendesinfektion 5 l",
+      "Alkoholbasiert | Gebrauchsfertig",
+    ]);
+  }
+
+  console.log("Seeded PHT Hygiene catalog + B2B demo company");
   console.log("Discount code: PHT-B2B-10 (10%, 90 days)");
-  console.log("Payment terms: VORKASSE, 50-50, NET-30");
-  console.log("Datasheets: public/datasheets/*.pdf");
 }
 
 main()
