@@ -27,8 +27,9 @@ export default async function HomePage() {
           <p className="hero__brand">PHT</p>
           <h1 className="hero__headline">Goods that earn their place.</h1>
           <p className="hero__support">
-            Secure sales engine with live inventory and ERP sync — priced
-            clearly, shipped from your warehouse system.
+            B2B Sales Engine: Registrierung, Freigaben (Produktionsleiter →
+            Einkauf), Rabatte mit Laufzeit — Aufträge und Rechnungen entstehen
+            im ERP.
           </p>
           <div className="cta-row">
             <Link href="/shop" className="btn btn--primary">

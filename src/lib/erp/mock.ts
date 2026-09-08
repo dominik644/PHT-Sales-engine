@@ -140,7 +140,11 @@ export class MockErpAdapter implements ErpAdapter {
       const current = this.stock.get(item.sku) ?? 0;
       this.stock.set(item.sku, Math.max(0, current - item.quantity));
     }
-    return { erpOrderId: `MOCK-${order.orderNumber}` };
+    return {
+      erpOrderId: `MOCK-ORD-${order.orderNumber}`,
+      erpInvoiceId: `MOCK-INV-${order.orderNumber}`,
+      invoiceNumber: `RE-${order.orderNumber.replace("PHT-", "")}`,
+    };
   }
 
   async fetchStock(sku: string): Promise<number | null> {

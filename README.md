@@ -1,71 +1,54 @@
-# PHT Sales Engine
+# PHT Sales Engine — B2B
 
-Secure webshop / sales engine with ERP sync — Shopify-style checkout flow, server-side stock locks, admin ops, and a pluggable ERP adapter.
+Sicherer B2B-Webshop mit Firmenregistrierung, Freigabe-Workflow
+(Produktionsleiter → Einkauf), Rabatten mit Laufzeit und ERP-Erstellung von
+Auftrag + Rechnung.
 
 ## Features
 
-- Storefront (catalog, product, cart, checkout)
-- SQLite/Prisma persistence for products, customers, orders
-- Secure checkout API (Zod validation, rate limits, stock transactions)
-- ERP adapters: `mock` (local demo) and `rest` (generic Bearer API)
-- Product pull + order push + signed stock webhooks
-- Admin dashboard (`/admin`) with sync + ERP retry
-- Security headers / CSP via middleware
+- B2B-Registrierung & Login (Rollen: Produktionsleiter, Einkauf, Firmen-Admin)
+- Freigabe-Kette vor ERP-Übergabe
+- Rabatte mit `validFrom` / `validTo` (PHT Admin)
+- Prisma-Persistenz, Stock-Locks, Rate-Limits
+- ERP-Adapter `mock` | `rest` (legt Auftrag **und** Rechnung an)
+- Admin: Firmen freischalten, Rabatte, Sync
 
 ## Quick start
 
 ```bash
 cp .env.example .env
 npm install
-npx prisma migrate dev --name init
+npx prisma migrate reset --force
 npm run db:seed
 npm run dev
 ```
 
 - Shop: http://localhost:3000
-- Admin: http://localhost:3000/admin (password from `ADMIN_PASSWORD`)
+- Registrierung: `/register` · Login: `/login` · Konto/Freigaben: `/account`
+- Admin: `/admin` (Passwort aus `ADMIN_PASSWORD`)
 
-## Connect your ERP
+### Demo-Zugänge (nach Seed)
 
-Set in `.env`:
+| Rolle | E-Mail | Passwort |
+|-------|--------|----------|
+| Produktionsleiter | produktion@mueller-fertigung.example | demo-b2b-1234 |
+| Einkauf | einkauf@mueller-fertigung.example | demo-b2b-1234 |
+| Firmen-Admin | admin@mueller-fertigung.example | demo-b2b-1234 |
 
-```env
-ERP_PROVIDER=rest
-ERP_BASE_URL=https://your-erp-or-middleware.example.com/api
-ERP_API_KEY=your-api-key
-ERP_WEBHOOK_SECRET=long-random-secret
-```
+Rabattcode: `PHT-B2B-10` (10 %, 90 Tage Laufzeit)
 
-Expected REST endpoints:
+## Ablauf
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/products` | Product master + stock |
-| POST | `/orders` | Create sales order |
-| GET | `/stock/:sku` | Stock lookup |
+1. Firma registriert sich → Status `pending`
+2. PHT schaltet Firma im Admin auf `active`
+3. Nutzer bestellt im Shop → Status `awaiting_production_approval`
+4. Produktionsleiter gibt frei → `awaiting_purchasing_approval`
+5. Einkauf gibt frei → ERP erstellt **Auftrag + Rechnung**
 
-Inbound stock webhook:
+## ERP REST
 
-`POST /api/erp/webhook/stock`  
-Header `x-pht-signature: sha256(secret + "." + rawBody)`  
-Body `{ "sku": "PHT-ARC-LAMP", "stock": 40 }`
+`POST /orders` muss zurückgeben:
 
-Supported via thin middleware for systems like Xentral, weclapp, SAP B1, Business Central, etc.
-
-## Security notes
-
-- Admin session: signed httpOnly JWT cookie
-- Checkout rate-limited per IP
-- Passwords compared via SHA-256 + timing-safe equal
-- Orders store hashed IP, never raw card data (payment PSP can be added next)
-- Use strong `SESSION_SECRET` / `ADMIN_PASSWORD` in production
-- Prefer Postgres (`DATABASE_URL`) for production instead of SQLite
-
-## Scripts
-
-```bash
-npm run dev
-npm run build && npm start
-npm run db:seed
-npm run db:migrate
+```json
+{ "id": "ERP-ORD-1", "invoiceId": "ERP-INV-1", "invoiceNumber": "RE-1001" }
 ```

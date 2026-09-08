@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkoutSchema } from "@/lib/validation";
 import { enforceRateLimit, hashIp } from "@/lib/security";
-import { pushOrderToErp } from "@/lib/erp/sync";
+import { requireActiveB2BUser } from "@/lib/b2b-auth";
+import { resolveDiscount } from "@/lib/discounts";
 
 function orderNumber() {
   const stamp = new Date()
@@ -14,15 +15,32 @@ function orderNumber() {
 }
 
 export async function POST(request: Request) {
+  let session;
+  try {
+    session = await requireActiveB2BUser();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "UNAUTHORIZED";
+    if (message === "COMPANY_INACTIVE") {
+      return NextResponse.json(
+        { error: "Firma noch nicht freigeschaltet. Bitte auf PHT-Freigabe warten." },
+        { status: 403 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Bitte als B2B-Kunde anmelden." },
+      { status: 401 },
+    );
+  }
+
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
     "unknown";
 
-  const limited = await enforceRateLimit(`checkout:${ip}`, 10, 60_000);
+  const limited = await enforceRateLimit(`checkout:${session.id}`, 15, 60_000);
   if (!limited.ok) {
     return NextResponse.json(
-      { error: "Too many checkout attempts. Please wait." },
+      { error: "Zu viele Checkout-Versuche." },
       {
         status: 429,
         headers: { "Retry-After": String(limited.retryAfterSec) },
@@ -30,13 +48,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let json: unknown;
-  try {
-    json = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
+  const json = await request.json().catch(() => null);
   const parsed = checkoutSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json(
@@ -46,6 +58,16 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
+  const company = await prisma.company.findUnique({
+    where: { id: session.companyId },
+  });
+  if (!company || company.status !== "active") {
+    return NextResponse.json(
+      { error: "Firma nicht aktiv." },
+      { status: 403 },
+    );
+  }
+
   const productIds = input.items.map((i) => i.productId);
   const products = await prisma.product.findMany({
     where: { id: { in: productIds }, active: true },
@@ -56,13 +78,13 @@ export async function POST(request: Request) {
     const product = byId.get(item.productId);
     if (!product) {
       return NextResponse.json(
-        { error: `Product not found: ${item.productId}` },
+        { error: `Produkt nicht gefunden: ${item.productId}` },
         { status: 400 },
       );
     }
     if (product.stock < item.quantity) {
       return NextResponse.json(
-        { error: `Insufficient stock for ${product.name}` },
+        { error: `Nicht genug Bestand für ${product.name}` },
         { status: 409 },
       );
     }
@@ -84,75 +106,71 @@ export async function POST(request: Request) {
     0,
   );
 
-  const customer = await prisma.customer.upsert({
-    where: { email: input.email.toLowerCase() },
-    create: {
-      email: input.email.toLowerCase(),
-      name: input.name,
-    },
-    update: { name: input.name },
+  const applied = await resolveDiscount({
+    code: input.discountCode,
+    companyId: company.id,
+    subtotalCents,
   });
 
-  const order = await prisma.$transaction(async (tx) => {
-    for (const item of input.items) {
-      const updated = await tx.product.updateMany({
-        where: {
-          id: item.productId,
-          stock: { gte: item.quantity },
-        },
-        data: { stock: { decrement: item.quantity } },
-      });
-      if (updated.count !== 1) {
-        throw new Error("STOCK_CONFLICT");
-      }
-    }
+  const discountCents = applied?.discountCents ?? 0;
+  const totalCents = subtotalCents - discountCents;
 
-    return tx.order.create({
-      data: {
-        number: orderNumber(),
-        status: "pending",
-        customerId: customer.id,
-        email: input.email.toLowerCase(),
-        name: input.name,
-        addressLine1: input.address,
-        city: input.city,
-        postalCode: input.postal,
-        country: input.country,
-        subtotalCents,
-        ipHash: hashIp(ip),
-        userAgent: request.headers.get("user-agent")?.slice(0, 300) ?? undefined,
-        items: { create: lineData },
-        events: {
-          create: {
-            type: "created",
-            message: "Order created from secure checkout",
+  const order = await prisma
+    .$transaction(async (tx) => {
+      for (const item of input.items) {
+        const updated = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            stock: { gte: item.quantity },
+          },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (updated.count !== 1) throw new Error("STOCK_CONFLICT");
+      }
+
+      return tx.order.create({
+        data: {
+          number: orderNumber(),
+          status: "awaiting_production_approval",
+          companyId: company.id,
+          requesterId: session.id,
+          email: session.email,
+          name: session.name,
+          addressLine1: input.address,
+          city: input.city,
+          postalCode: input.postal,
+          country: input.country,
+          subtotalCents,
+          discountCents,
+          totalCents,
+          discountId: applied?.id,
+          discountCode: applied?.code,
+          erpSyncStatus: "pending",
+          ipHash: hashIp(ip),
+          userAgent: request.headers.get("user-agent")?.slice(0, 300) ?? undefined,
+          items: { create: lineData },
+          events: {
+            create: {
+              type: "created",
+              message:
+                "B2B-Auftrag erstellt — wartet auf Freigabe Produktionsleiter",
+            },
           },
         },
-      },
-      include: { items: true },
+      });
+    })
+    .catch((error: unknown) => {
+      if (error instanceof Error && error.message === "STOCK_CONFLICT") {
+        return null;
+      }
+      throw error;
     });
-  }).catch((error: unknown) => {
-    if (error instanceof Error && error.message === "STOCK_CONFLICT") {
-      return null;
-    }
-    throw error;
-  });
 
   if (!order) {
     return NextResponse.json(
-      { error: "Stock changed during checkout. Please refresh and try again." },
+      { error: "Bestand hat sich geändert. Bitte erneut versuchen." },
       { status: 409 },
     );
-  }
-
-  let erpOrderId: string | null = null;
-  let erpSyncStatus = order.erpSyncStatus;
-  try {
-    const result = await pushOrderToErp(order.id);
-    erpOrderId = result.erpOrderId;
-    erpSyncStatus = "synced";
-  } catch {
-    erpSyncStatus = "failed";
   }
 
   return NextResponse.json({
@@ -160,9 +178,14 @@ export async function POST(request: Request) {
     order: {
       id: order.id,
       number: order.number,
+      status: order.status,
       subtotalCents: order.subtotalCents,
-      erpSyncStatus,
-      erpOrderId,
+      discountCents: order.discountCents,
+      totalCents: order.totalCents,
+      discountCode: order.discountCode,
+      erpSyncStatus: order.erpSyncStatus,
+      message:
+        "Auftrag eingereicht. Nächster Schritt: Freigabe durch Produktionsleiter, danach Einkauf. Erst dann erstellt das ERP Auftrag und Rechnung.",
     },
   });
 }

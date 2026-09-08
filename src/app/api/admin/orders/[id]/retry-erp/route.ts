@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/security";
-import { pushOrderToErp } from "@/lib/erp/sync";
+import { pushOrderAndInvoiceToErp } from "@/lib/erp/sync";
 
 export async function POST(
   _request: Request,
@@ -12,7 +12,7 @@ export async function POST(
 
   const { id } = await context.params;
   try {
-    const result = await pushOrderToErp(id);
+    const result = await pushOrderAndInvoiceToErp(id);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "ERP push failed";

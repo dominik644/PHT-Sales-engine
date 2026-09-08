@@ -133,7 +133,100 @@ async function main() {
       create: product,
     });
   }
+
+  const { hash } = await import("bcryptjs");
+  const passwordHash = await hash("demo-b2b-1234", 12);
+
+  const company = await prisma.company.upsert({
+    where: { id: "seed-company-mueller" },
+    update: {
+      status: "active",
+      name: "Müller Fertigung GmbH",
+    },
+    create: {
+      id: "seed-company-mueller",
+      name: "Müller Fertigung GmbH",
+      vatId: "DE123456789",
+      billingEmail: "einkauf@mueller-fertigung.example",
+      addressLine1: "Industriepark 12",
+      city: "Stuttgart",
+      postalCode: "70173",
+      country: "DE",
+      status: "active",
+      erpCustomerId: "ERP-CUST-MUELLER",
+    },
+  });
+
+  const users = [
+    {
+      email: "produktion@mueller-fertigung.example",
+      name: "Anna Produktionsleiter",
+      role: "PRODUCTION_MANAGER",
+    },
+    {
+      email: "einkauf@mueller-fertigung.example",
+      name: "Ben Einkauf",
+      role: "PURCHASING",
+    },
+    {
+      email: "admin@mueller-fertigung.example",
+      name: "Clara Admin",
+      role: "COMPANY_ADMIN",
+    },
+  ];
+
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {
+        name: u.name,
+        role: u.role,
+        passwordHash,
+        active: true,
+        companyId: company.id,
+      },
+      create: {
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        passwordHash,
+        companyId: company.id,
+      },
+    });
+  }
+
+  const now = new Date();
+  const in90 = new Date(now.getTime() + 90 * 86400000);
+  await prisma.discount.upsert({
+    where: { code: "PHT-B2B-10" },
+    update: {
+      name: "B2B 10% Einführungsrabatt",
+      type: "percent",
+      percentOff: 10,
+      validFrom: now,
+      validTo: in90,
+      active: true,
+      companyId: null,
+    },
+    create: {
+      code: "PHT-B2B-10",
+      name: "B2B 10% Einführungsrabatt",
+      type: "percent",
+      percentOff: 10,
+      minSubtotalCents: 0,
+      validFrom: now,
+      validTo: in90,
+      active: true,
+      companyId: null,
+    },
+  });
+
   console.log(`Seeded ${products.length} products`);
+  console.log("Demo B2B company: Müller Fertigung GmbH (active)");
+  console.log("  produktion@mueller-fertigung.example / demo-b2b-1234");
+  console.log("  einkauf@mueller-fertigung.example / demo-b2b-1234");
+  console.log("  admin@mueller-fertigung.example / demo-b2b-1234");
+  console.log("Discount code: PHT-B2B-10 (10%, 90 days)");
 }
 
 main()

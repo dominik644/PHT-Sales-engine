@@ -46,11 +46,19 @@ export class RestErpAdapter implements ErpAdapter {
   }
 
   async pushOrder(order: ErpOrderPayload): Promise<ErpOrderResult> {
-    const result = await this.request<{ id: string }>("/orders", {
+    const result = await this.request<{
+      id: string;
+      invoiceId: string;
+      invoiceNumber: string;
+    }>("/orders", {
       method: "POST",
       body: JSON.stringify(order),
     });
-    return { erpOrderId: result.id };
+    return {
+      erpOrderId: result.id,
+      erpInvoiceId: result.invoiceId,
+      invoiceNumber: result.invoiceNumber,
+    };
   }
 
   async fetchStock(sku: string): Promise<number | null> {

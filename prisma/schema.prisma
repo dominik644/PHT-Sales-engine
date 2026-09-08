@@ -8,56 +8,117 @@ datasource db {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  erpId       String?  @unique
-  sku         String   @unique
-  slug        String   @unique
+  id          String      @id @default(cuid())
+  erpId       String?     @unique
+  sku         String      @unique
+  slug        String      @unique
   name        String
   category    String
   tagline     String
   description String
   priceCents  Int
-  currency    String   @default("EUR")
+  currency    String      @default("EUR")
   imageUrl    String
-  accent      String   @default("#1F4B3A")
-  stock       Int      @default(0)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  accent      String      @default("#1F4B3A")
+  stock       Int         @default(0)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   lineItems   OrderItem[]
 }
 
-model Customer {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  orders    Order[]
+/// B2B Kundenfirma
+model Company {
+  id             String     @id @default(cuid())
+  name           String
+  vatId          String?
+  billingEmail   String
+  addressLine1   String
+  city           String
+  postalCode     String
+  country        String     @default("DE")
+  /// pending | active | suspended
+  status         String     @default("pending")
+  erpCustomerId  String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  users          User[]
+  orders         Order[]
+  discounts      Discount[]
+}
+
+/// B2B Nutzer mit Freigabe-Rolle
+model User {
+  id           String          @id @default(cuid())
+  companyId    String
+  company      Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  email        String          @unique
+  name         String
+  passwordHash String
+  /// PRODUCTION_MANAGER | PURCHASING | COMPANY_ADMIN
+  role         String
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  ordersPlaced Order[]         @relation("OrderRequester")
+  approvals    OrderApproval[]
+}
+
+model Discount {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  name             String
+  /// percent | fixed
+  type             String
+  percentOff       Float?
+  amountOffCents   Int?
+  minSubtotalCents Int       @default(0)
+  validFrom        DateTime
+  validTo          DateTime
+  active           Boolean   @default(true)
+  /// null = gilt für alle aktiven Firmen
+  companyId        String?
+  company          Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  orders           Order[]
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  number          String      @unique
-  status          String      @default("pending")
-  customerId      String?
-  customer        Customer?   @relation(fields: [customerId], references: [id])
-  email           String
-  name            String
-  addressLine1    String
-  city            String
-  postalCode      String
-  country         String      @default("DE")
-  subtotalCents   Int
-  currency        String      @default("EUR")
-  erpSyncStatus   String      @default("pending")
-  erpOrderId      String?
-  erpLastError    String?
-  ipHash          String?
-  userAgent       String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  items           OrderItem[]
-  events          OrderEvent[]
+  id                 String          @id @default(cuid())
+  number             String          @unique
+  /// draft | awaiting_production_approval | awaiting_purchasing_approval | approved | confirmed | rejected | cancelled
+  status             String          @default("awaiting_production_approval")
+  companyId          String?
+  company            Company?        @relation(fields: [companyId], references: [id])
+  requesterId        String?
+  requester          User?           @relation("OrderRequester", fields: [requesterId], references: [id])
+  email              String
+  name               String
+  addressLine1       String
+  city               String
+  postalCode         String
+  country            String          @default("DE")
+  subtotalCents      Int
+  discountCents      Int             @default(0)
+  totalCents         Int
+  currency           String          @default("EUR")
+  discountId         String?
+  discount           Discount?       @relation(fields: [discountId], references: [id])
+  discountCode       String?
+  /// pending | synced | failed | skipped
+  erpSyncStatus      String          @default("pending")
+  erpOrderId         String?
+  erpInvoiceId       String?
+  erpLastError       String?
+  ipHash             String?
+  userAgent          String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  items              OrderItem[]
+  events             OrderEvent[]
+  approvals          OrderApproval[]
+  invoice            Invoice?
 }
 
 model OrderItem {
@@ -81,6 +142,35 @@ model OrderEvent {
   createdAt DateTime @default(now())
 }
 
+model OrderApproval {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  /// PRODUCTION_MANAGER | PURCHASING
+  role       String
+  /// approved | rejected
+  decision   String
+  note       String?
+  createdAt  DateTime @default(now())
+}
+
+/// Vom ERP erstellte Rechnung
+model Invoice {
+  id            String   @id @default(cuid())
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  number        String   @unique
+  erpInvoiceId  String   @unique
+  amountCents   Int
+  currency      String   @default("EUR")
+  /// open | paid | void
+  status        String   @default("open")
+  issuedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+}
+
 model ErpSyncLog {
   id        String   @id @default(cuid())
   direction String
@@ -91,7 +181,7 @@ model ErpSyncLog {
 }
 
 model RateLimitBucket {
-  id        String   @id
-  count     Int      @default(0)
+  id          String   @id
+  count       Int      @default(0)
   windowStart DateTime @default(now())
 }

@@ -855,6 +855,20 @@ select {
   color: #b42318;
 }
 
+.pill--active,
+.pill--confirmed,
+.pill--approved {
+  background: rgba(125, 255, 179, 0.28);
+  border-color: rgba(31, 143, 95, 0.35);
+}
+
+.pill--suspended,
+.pill--rejected {
+  background: rgba(180, 35, 24, 0.08);
+  border-color: rgba(180, 35, 24, 0.3);
+  color: #b42318;
+}
+
 .pill--pending,
 .pill--miss {
   background: rgba(36, 52, 71, 0.06);

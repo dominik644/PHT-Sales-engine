@@ -61,15 +61,18 @@ export async function syncProductsFromErp() {
   return { upserted, provider: erp.name };
 }
 
-export async function pushOrderToErp(orderId: string) {
+/** Nach finaler Freigabe: Auftrag + Rechnung im ERP erzeugen */
+export async function pushOrderAndInvoiceToErp(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { items: true },
+    include: { items: true, company: true },
   });
   if (!order) throw new Error("Order not found");
 
   const payload: ErpOrderPayload = {
     orderNumber: order.number,
+    companyName: order.company?.name,
+    erpCustomerId: order.company?.erpCustomerId,
     email: order.email,
     name: order.name,
     addressLine1: order.addressLine1,
@@ -78,6 +81,9 @@ export async function pushOrderToErp(orderId: string) {
     country: order.country,
     currency: order.currency,
     subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    totalCents: order.totalCents,
+    discountCode: order.discountCode,
     items: order.items.map((item) => ({
       sku: item.sku,
       name: item.name,
@@ -89,30 +95,51 @@ export async function pushOrderToErp(orderId: string) {
   try {
     const erp = getErpAdapter();
     const result = await erp.pushOrder(payload);
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        erpSyncStatus: "synced",
-        erpOrderId: result.erpOrderId,
-        erpLastError: null,
-        status: "confirmed",
-      },
-    });
-    await prisma.orderEvent.create({
-      data: {
-        orderId: order.id,
-        type: "erp_synced",
-        message: `Pushed to ERP (${erp.name}) as ${result.erpOrderId}`,
-      },
-    });
-    await prisma.erpSyncLog.create({
-      data: {
-        direction: "outbound",
-        entity: "order",
-        status: "ok",
-        detail: `${order.number} → ${result.erpOrderId}`,
-      },
-    });
+
+    await prisma.$transaction([
+      prisma.order.update({
+        where: { id: order.id },
+        data: {
+          erpSyncStatus: "synced",
+          erpOrderId: result.erpOrderId,
+          erpInvoiceId: result.erpInvoiceId,
+          erpLastError: null,
+          status: "confirmed",
+        },
+      }),
+      prisma.invoice.upsert({
+        where: { orderId: order.id },
+        create: {
+          orderId: order.id,
+          number: result.invoiceNumber,
+          erpInvoiceId: result.erpInvoiceId,
+          amountCents: order.totalCents,
+          currency: order.currency,
+          status: "open",
+        },
+        update: {
+          number: result.invoiceNumber,
+          erpInvoiceId: result.erpInvoiceId,
+          amountCents: order.totalCents,
+        },
+      }),
+      prisma.orderEvent.create({
+        data: {
+          orderId: order.id,
+          type: "erp_order_invoice",
+          message: `ERP Auftrag ${result.erpOrderId}, Rechnung ${result.invoiceNumber}`,
+        },
+      }),
+      prisma.erpSyncLog.create({
+        data: {
+          direction: "outbound",
+          entity: "order+invoice",
+          status: "ok",
+          detail: `${order.number} → ${result.erpOrderId} / ${result.erpInvoiceId}`,
+        },
+      }),
+    ]);
+
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown ERP error";
@@ -133,7 +160,7 @@ export async function pushOrderToErp(orderId: string) {
     await prisma.erpSyncLog.create({
       data: {
         direction: "outbound",
-        entity: "order",
+        entity: "order+invoice",
         status: "error",
         detail: `${order.number}: ${message}`,
       },
@@ -141,3 +168,6 @@ export async function pushOrderToErp(orderId: string) {
     throw error;
   }
 }
+
+/** @deprecated use pushOrderAndInvoiceToErp */
+export const pushOrderToErp = pushOrderAndInvoiceToErp;

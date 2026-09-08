@@ -4,27 +4,42 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/security";
 import { formatMoney } from "@/lib/money";
 import { AdminActions } from "@/components/AdminActions";
+import { AdminB2BPanel } from "@/components/AdminB2BPanel";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   if (!(await requireAdmin())) redirect("/admin/login");
 
-  const [productCount, orderCount, pendingErp, recentOrders, syncLogs] =
-    await Promise.all([
-      prisma.product.count(),
-      prisma.order.count(),
-      prisma.order.count({ where: { erpSyncStatus: { not: "synced" } } }),
-      prisma.order.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        include: { items: true },
-      }),
-      prisma.erpSyncLog.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 8,
-      }),
-    ]);
+  const [
+    productCount,
+    orderCount,
+    pendingErp,
+    recentOrders,
+    syncLogs,
+    companyCount,
+  ] = await Promise.all([
+    prisma.product.count(),
+    prisma.order.count(),
+    prisma.order.count({
+      where: {
+        AND: [
+          { status: { in: ["approved", "confirmed"] } },
+          { erpSyncStatus: { not: "synced" } },
+        ],
+      },
+    }),
+    prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { items: true, invoice: true, company: true },
+    }),
+    prisma.erpSyncLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    }),
+    prisma.company.count(),
+  ]);
 
   return (
     <div className="admin-shell">
@@ -47,22 +62,22 @@ export default async function AdminDashboardPage() {
           <p className="admin-stat">{productCount}</p>
         </div>
         <div className="panel">
+          <p className="eyebrow">B2B Firmen</p>
+          <p className="admin-stat">{companyCount}</p>
+        </div>
+        <div className="panel">
           <p className="eyebrow">Orders</p>
           <p className="admin-stat">{orderCount}</p>
         </div>
         <div className="panel">
-          <p className="eyebrow">ERP pending / failed</p>
+          <p className="eyebrow">ERP pending</p>
           <p className="admin-stat">{pendingErp}</p>
-        </div>
-        <div className="panel">
-          <p className="eyebrow">ERP provider</p>
-          <p className="admin-stat admin-stat--text">
-            {(process.env.ERP_PROVIDER ?? "mock").toUpperCase()}
-          </p>
         </div>
       </section>
 
-      <section className="admin-grid">
+      <AdminB2BPanel />
+
+      <section className="admin-grid" style={{ marginTop: "1.25rem" }}>
         <div className="panel">
           <h2>Recent orders</h2>
           <div className="admin-table">
@@ -71,15 +86,19 @@ export default async function AdminDashboardPage() {
                 <div>
                   <strong>{order.number}</strong>
                   <p className="muted">
-                    {order.name} · {order.email}
+                    {order.company?.name ?? order.name} · {order.status}
                   </p>
+                  {order.invoice ? (
+                    <p className="muted">RE {order.invoice.number}</p>
+                  ) : null}
                 </div>
                 <div className="admin-row__meta">
-                  <span>{formatMoney(order.subtotalCents)}</span>
+                  <span>{formatMoney(order.totalCents)}</span>
                   <span className={`pill pill--${order.erpSyncStatus}`}>
                     ERP {order.erpSyncStatus}
                   </span>
-                  {order.erpSyncStatus !== "synced" ? (
+                  {order.erpSyncStatus !== "synced" &&
+                  ["approved", "confirmed"].includes(order.status) ? (
                     <RetryErpButton orderId={order.id} />
                   ) : null}
                 </div>

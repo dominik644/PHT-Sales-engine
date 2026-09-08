@@ -14,6 +14,8 @@ export type ErpProduct = {
 
 export type ErpOrderPayload = {
   orderNumber: string;
+  companyName?: string;
+  erpCustomerId?: string | null;
   email: string;
   name: string;
   addressLine1: string;
@@ -22,6 +24,9 @@ export type ErpOrderPayload = {
   country: string;
   currency: string;
   subtotalCents: number;
+  discountCents: number;
+  totalCents: number;
+  discountCode?: string | null;
   items: Array<{
     sku: string;
     name: string;
@@ -32,11 +37,14 @@ export type ErpOrderPayload = {
 
 export type ErpOrderResult = {
   erpOrderId: string;
+  erpInvoiceId: string;
+  invoiceNumber: string;
 };
 
 export interface ErpAdapter {
   readonly name: string;
   fetchProducts(): Promise<ErpProduct[]>;
+  /** ERP legt Auftrag UND Rechnung an */
   pushOrder(order: ErpOrderPayload): Promise<ErpOrderResult>;
   fetchStock(sku: string): Promise<number | null>;
 }
