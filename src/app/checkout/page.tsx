@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { formatPrice } from "@/lib/products";
+import { formatMoney } from "@/lib/money";
 import { useCart } from "@/context/CartContext";
 
 type FormState = {
@@ -22,25 +22,67 @@ const emptyForm: FormState = {
 };
 
 export default function CheckoutPage() {
-  const { lines, subtotal, clearCart, itemCount } = useCart();
-  const [placed, setPlaced] = useState(false);
+  const { items, subtotalCents, clearCart, itemCount } = useCart();
+  const [placed, setPlaced] = useState<{
+    number: string;
+    erpSyncStatus: string;
+    erpOrderId: string | null;
+  } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setError(null);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const missing = Object.entries(form).find(([, value]) => !value.trim());
     if (missing) {
-      setError("Please complete all shipping fields before placing the order.");
+      setError("Bitte alle Lieferfelder ausfüllen.");
       return;
     }
-    setPlaced(true);
-    clearCart();
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          country: "DE",
+          items: items.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        order?: {
+          number: string;
+          erpSyncStatus: string;
+          erpOrderId: string | null;
+        };
+      };
+      if (!res.ok || !data.order) {
+        setError(data.error ?? "Checkout fehlgeschlagen.");
+        return;
+      }
+      clearCart();
+      setPlaced({
+        number: data.order.number,
+        erpSyncStatus: data.order.erpSyncStatus,
+        erpOrderId: data.order.erpOrderId,
+      });
+    } catch {
+      setError("Netzwerkfehler beim Checkout.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (placed) {
@@ -49,11 +91,12 @@ export default function CheckoutPage() {
         <div className="success-banner">
           <p className="eyebrow">Order confirmed</p>
           <h1 style={{ fontFamily: "var(--font-display)", margin: "0.35rem 0" }}>
-            Thanks — your PHT order is in.
+            Thanks — order {placed.number} is in.
           </h1>
           <p className="muted" style={{ margin: 0 }}>
-            This demo checkout does not process payments. Your cart has been
-            cleared so you can keep browsing.
+            ERP sync: <strong>{placed.erpSyncStatus}</strong>
+            {placed.erpOrderId ? ` · ${placed.erpOrderId}` : ""}. Stock was
+            reserved server-side and pushed to the configured ERP adapter.
           </p>
         </div>
         <Link href="/shop" className="btn btn--primary">
@@ -68,7 +111,9 @@ export default function CheckoutPage() {
       <header className="page-intro">
         <p className="eyebrow">Checkout</p>
         <h1>Almost there</h1>
-        <p className="muted">Enter shipping details to place a demo order.</p>
+        <p className="muted">
+          Secure server-side order with stock lock and ERP handoff.
+        </p>
       </header>
 
       {itemCount === 0 ? (
@@ -137,25 +182,31 @@ export default function CheckoutPage() {
                 />
               </label>
               {error ? <p className="form-error">{error}</p> : null}
-              <button type="submit" className="btn btn--primary btn--block">
-                Place order · {formatPrice(subtotal)}
+              <button
+                type="submit"
+                className="btn btn--primary btn--block"
+                disabled={submitting}
+              >
+                {submitting
+                  ? "Placing order…"
+                  : `Place order · ${formatMoney(subtotalCents)}`}
               </button>
             </div>
           </form>
 
           <aside className="panel">
             <h2>Order summary</h2>
-            {lines.map(({ product, quantity, lineTotal }) => (
+            {items.map(({ product, quantity }) => (
               <div key={product.id} className="summary-line">
                 <span>
                   {product.name} × {quantity}
                 </span>
-                <span>{formatPrice(lineTotal)}</span>
+                <span>{formatMoney(product.priceCents * quantity)}</span>
               </div>
             ))}
             <div className="summary-line">
               <span>Subtotal</span>
-              <span>{formatPrice(subtotal)}</span>
+              <span>{formatMoney(subtotalCents)}</span>
             </div>
           </aside>
         </div>

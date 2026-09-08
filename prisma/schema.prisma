@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  erpId       String?  @unique
+  sku         String   @unique
+  slug        String   @unique
+  name        String
+  category    String
+  tagline     String
+  description String
+  priceCents  Int
+  currency    String   @default("EUR")
+  imageUrl    String
+  accent      String   @default("#1F4B3A")
+  stock       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lineItems   OrderItem[]
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  number          String      @unique
+  status          String      @default("pending")
+  customerId      String?
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  email           String
+  name            String
+  addressLine1    String
+  city            String
+  postalCode      String
+  country         String      @default("DE")
+  subtotalCents   Int
+  currency        String      @default("EUR")
+  erpSyncStatus   String      @default("pending")
+  erpOrderId      String?
+  erpLastError    String?
+  ipHash          String?
+  userAgent       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+  events          OrderEvent[]
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  sku        String
+  name       String
+  unitCents  Int
+  quantity   Int
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model ErpSyncLog {
+  id        String   @id @default(cuid())
+  direction String
+  entity    String
+  status    String
+  detail    String
+  createdAt DateTime @default(now())
+}
+
+model RateLimitBucket {
+  id        String   @id
+  count     Int      @default(0)
+  windowStart DateTime @default(now())
+}

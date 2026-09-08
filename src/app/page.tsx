@@ -1,10 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
-import { products } from "@/lib/products";
+import { listActiveProducts } from "@/lib/catalog";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const products = await listActiveProducts();
   const featured = products.slice(0, 4);
+  const first = products[0];
 
   return (
     <>
@@ -23,16 +27,18 @@ export default function HomePage() {
           <p className="hero__brand">PHT</p>
           <h1 className="hero__headline">Goods that earn their place.</h1>
           <p className="hero__support">
-            A focused sales engine for lighting, audio, furniture, and home tech —
-            priced clearly, shipped fast.
+            Secure sales engine with live inventory and ERP sync — priced
+            clearly, shipped from your warehouse system.
           </p>
           <div className="cta-row">
             <Link href="/shop" className="btn btn--primary">
               Shop the collection
             </Link>
-            <Link href="/product/arc-desk-lamp" className="btn btn--ghost">
-              View Arc Lamp
-            </Link>
+            {first ? (
+              <Link href={`/product/${first.slug}`} className="btn btn--ghost">
+                View {first.name}
+              </Link>
+            ) : null}
           </div>
         </div>
       </section>

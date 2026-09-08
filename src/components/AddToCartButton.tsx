@@ -1,12 +1,12 @@
 "use client";
 
-import { useCart } from "@/context/CartContext";
+import { useCart, type CartProductSnapshot } from "@/context/CartContext";
 
 export function AddToCartButton({
-  productId,
+  product,
   label = "Add to cart",
 }: {
-  productId: string;
+  product: CartProductSnapshot;
   label?: string;
 }) {
   const { addItem } = useCart();
@@ -15,7 +15,7 @@ export function AddToCartButton({
     <button
       type="button"
       className="btn btn--primary"
-      onClick={() => addItem(productId)}
+      onClick={() => addItem(product)}
     >
       {label}
     </button>

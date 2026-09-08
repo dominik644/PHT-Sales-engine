@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (keep example committed)
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +41,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local sqlite
+/prisma/*.db
+/prisma/*.db-journal
+/dev.db
+/dev.db-journal
+
+# tooling skill dumps from Prisma init
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+
+/src/generated/prisma

@@ -7,6 +7,7 @@ import { useCart } from "@/context/CartContext";
 const links = [
   { href: "/shop", label: "Shop" },
   { href: "/checkout", label: "Checkout" },
+  { href: "/admin", label: "Admin" },
 ];
 
 export function Header() {

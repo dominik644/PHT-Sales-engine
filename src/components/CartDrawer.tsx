@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { formatPrice } from "@/lib/products";
+import { formatMoney } from "@/lib/money";
 import { useCart } from "@/context/CartContext";
 
 export function CartDrawer() {
   const {
     isOpen,
     closeCart,
-    lines,
-    subtotal,
+    items,
+    subtotalCents,
     setQuantity,
     removeItem,
     itemCount,
@@ -47,7 +47,7 @@ export function CartDrawer() {
         ) : (
           <>
             <ul className="cart-lines">
-              {lines.map(({ product, quantity, lineTotal }) => (
+              {items.map(({ product, quantity }) => (
                 <li key={product.id} className="cart-line">
                   <div className="cart-line__media">
                     <Image
@@ -63,7 +63,9 @@ export function CartDrawer() {
                       <Link href={`/product/${product.slug}`} onClick={closeCart}>
                         {product.name}
                       </Link>
-                      <span>{formatPrice(lineTotal)}</span>
+                      <span>
+                        {formatMoney(product.priceCents * quantity)}
+                      </span>
                     </div>
                     <div className="cart-line__controls">
                       <div className="qty">
@@ -98,7 +100,7 @@ export function CartDrawer() {
             <div className="cart-drawer__foot">
               <div className="cart-subtotal">
                 <span>Subtotal</span>
-                <strong>{formatPrice(subtotal)}</strong>
+                <strong>{formatMoney(subtotalCents)}</strong>
               </div>
               <Link
                 href="/checkout"

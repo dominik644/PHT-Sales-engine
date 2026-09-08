@@ -1,130 +1,146 @@
-export type Product = {
-  id: string;
-  slug: string;
-  name: string;
-  price: number;
-  category: string;
-  tagline: string;
-  description: string;
-  image: string;
-  accent: string;
-};
+import { PrismaClient } from "@prisma/client";
 
-export const products: Product[] = [
+const prisma = new PrismaClient();
+
+const products = [
   {
-    id: "pht-01",
+    erpId: "ERP-PHT-01",
+    sku: "PHT-ARC-LAMP",
     slug: "arc-desk-lamp",
     name: "Arc Desk Lamp",
-    price: 189,
     category: "Lighting",
     tagline: "Focused light, quiet presence.",
     description:
       "A balanced steel arc with a warm dimmable LED. Built for long work sessions without glare or clutter.",
-    image:
+    priceCents: 18900,
+    imageUrl:
       "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1200&q=80",
     accent: "#1F4B3A",
+    stock: 42,
   },
   {
-    id: "pht-02",
+    erpId: "ERP-PHT-02",
+    sku: "PHT-PULSE-HP",
     slug: "pulse-headphones",
     name: "Pulse Headphones",
-    price: 249,
     category: "Audio",
     tagline: "Studio clarity for everyday listening.",
     description:
       "Closed-back wireless cans with adaptive noise control and a 36-hour charge. Tuned for detail, not hype.",
-    image:
+    priceCents: 24900,
+    imageUrl:
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80",
     accent: "#1A2A3A",
+    stock: 28,
   },
   {
-    id: "pht-03",
+    erpId: "ERP-PHT-03",
+    sku: "PHT-NORD-CHAIR",
     slug: "nord-lounge-chair",
     name: "Nord Lounge Chair",
-    price: 620,
     category: "Furniture",
     tagline: "Sit lower. Stay longer.",
     description:
       "Oak frame, wool upholstery, and a seat angle made for reading. Assembled in small batches.",
-    image:
+    priceCents: 62000,
+    imageUrl:
       "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=1200&q=80",
     accent: "#3D2F24",
+    stock: 12,
   },
   {
-    id: "pht-04",
+    erpId: "ERP-PHT-04",
+    sku: "PHT-TERRA-SET",
     slug: "terra-ceramic-set",
     name: "Terra Ceramic Set",
-    price: 96,
     category: "Kitchen",
     tagline: "Four cups, one kiln.",
     description:
       "Hand-thrown stoneware with a matte ash glaze. Microwave safe, dishwasher ready, endlessly stackable.",
-    image:
+    priceCents: 9600,
+    imageUrl:
       "https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=1200&q=80",
     accent: "#5C4033",
+    stock: 64,
   },
   {
-    id: "pht-05",
+    erpId: "ERP-PHT-05",
+    sku: "PHT-FLUX-THERM",
     slug: "flux-thermostat",
     name: "Flux Thermostat",
-    price: 179,
     category: "Home Tech",
     tagline: "Climate control without the noise.",
     description:
       "A wall unit that learns your schedule and keeps rooms steady. Quiet motors, honest materials, clear display.",
-    image:
+    priceCents: 17900,
+    imageUrl:
       "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1200&q=80",
     accent: "#2C3E50",
+    stock: 35,
   },
   {
-    id: "pht-06",
+    erpId: "ERP-PHT-06",
+    sku: "PHT-LOOM-THROW",
     slug: "loom-merino-throw",
     name: "Loom Merino Throw",
-    price: 148,
     category: "Textiles",
     tagline: "Soft weight for cooler evenings.",
     description:
       "100% merino, loom-finished edges, and a drape that works on sofas or beds. Machine washable on gentle.",
-    image:
+    priceCents: 14800,
+    imageUrl:
       "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=1200&q=80",
     accent: "#4A5568",
+    stock: 50,
   },
   {
-    id: "pht-07",
+    erpId: "ERP-PHT-07",
+    sku: "PHT-ORBIT-CLOCK",
     slug: "orbit-desk-clock",
     name: "Orbit Desk Clock",
-    price: 84,
     category: "Objects",
     tagline: "Time, distilled.",
     description:
       "Brushed aluminum case, silent quartz movement, and a face you can read from across the room.",
-    image:
+    priceCents: 8400,
+    imageUrl:
       "https://images.unsplash.com/photo-1563861826100-9cb868fdbe1c?auto=format&fit=crop&w=1200&q=80",
     accent: "#334155",
+    stock: 73,
   },
   {
-    id: "pht-08",
+    erpId: "ERP-PHT-08",
+    sku: "PHT-RIDGE-BOTTLE",
     slug: "ridge-bottle",
     name: "Ridge Bottle",
-    price: 42,
     category: "Everyday",
     tagline: "Carry cold farther.",
     description:
       "Double-wall steel, 750 ml, powder-coated shell. Keeps drinks cold for 24 hours without sweating.",
-    image:
+    priceCents: 4200,
+    imageUrl:
       "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1200&q=80",
     accent: "#0F766E",
+    stock: 120,
   },
 ];
 
-export function getProduct(slug: string): Product | undefined {
-  return products.find((product) => product.slug === slug);
+async function main() {
+  for (const product of products) {
+    await prisma.product.upsert({
+      where: { sku: product.sku },
+      update: product,
+      create: product,
+    });
+  }
+  console.log(`Seeded ${products.length} products`);
 }
 
-export function formatPrice(centsOrEuro: number): string {
-  return new Intl.NumberFormat("en-EU", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(centsOrEuro);
-}
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
