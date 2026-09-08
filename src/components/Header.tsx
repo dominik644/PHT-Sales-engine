@@ -40,9 +40,9 @@ export function Header() {
     <header className="site-header">
       <div className="topbar">
         <div className="topbar__inner">
+          <span>DEMO-VERSION · Struktur testen</span>
           <span>PHT Hygiene · B2B-Fachhandel</span>
-          <span>Freigabe: Produktionsleiter → Einkauf</span>
-          <span>Auftrag & Rechnung via ERP</span>
+          <span>ERP: Mock (noch nicht Live)</span>
         </div>
       </div>
 

@@ -83,7 +83,7 @@ export default function OrderDetailPage() {
       <div className="section">
         <p className="form-error">{error}</p>
         <Link href="/account" className="btn btn--ink">
-          Zurück zur Historie
+          Zurück zu meinen Aufträgen
         </Link>
       </div>
     );

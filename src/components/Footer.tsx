@@ -14,6 +14,7 @@ export function Footer() {
           <Link href="/shop">Sortiment</Link>
           <Link href="/warenkorb">Warenkorb</Link>
           <Link href="/account">Mein Konto</Link>
+          <Link href="/demo">Demo-Leitfaden</Link>
           <Link href="/login">Anmelden</Link>
         </div>
       </div>

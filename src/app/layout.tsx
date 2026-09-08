@@ -4,6 +4,7 @@ import { CartProvider } from "@/context/CartContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
+import { DemoBanner } from "@/components/DemoBanner";
 import "./globals.css";
 
 const display = Syne({
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="de" className={`${display.variable} ${body.variable} h-full`}>
       <body className="page-shell antialiased">
         <CartProvider>
+          <DemoBanner />
           <Header />
           <main className="page-main">{children}</main>
           <Footer />

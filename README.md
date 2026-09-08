@@ -1,41 +1,37 @@
-# PHT Hygiene Webshop (B2B)
+# PHT Hygiene Webshop — DEMO
 
-Eigenständiger B2B-Webshop für **PHT Hygiene** — **kein Modul und keine Abhängigkeit vom PHT Mastertool**.
+**Status: Demo-Version.** Erst Struktur und Abläufe absichern, danach Live.
 
-Eigene App, eigene Datenbank, eigener Admin, eigener Deploy. Es gibt keine gemeinsame
-Auth, keine geteilten Packages und keine Runtime-Kopplung zum Mastertool
-(`pht-mastertool`). Anbindung nach außen nur über den konfigurierbaren ERP-Adapter
-(Auftrag + Rechnung).
+Eigenständig — **kein** Mastertool. Eigene App, DB, Admin, Deploy.
+ERP aktuell: **Mock** (kein echtes Business Central nötig).
 
-Ablauf angelehnt an professionelle Fachshops (Suche, Kategorien, Warenkorb, Kasse).
+## Shop-Struktur (Demo)
 
-## Features
+```
+Start (/)
+├── Sortiment (/shop)          Suche · Kategorien · Sortierung
+├── Artikel (/product/[slug])  Menge · Warenkorb · Datenblatt
+├── Warenkorb (/warenkorb)     Positionen prüfen
+├── Kasse (/checkout)          Adresse · Zahlungsbedingung · Rabatt
+└── Mein Konto (/account)      Freigaben · Aufträge
 
-- B2B-Registrierung & Login (Rollen: Produktionsleiter, Einkauf, Firmen-Admin)
-- Freigabe-Kette vor ERP-Übergabe
-- Rabatte mit `validFrom` / `validTo` (PHT Admin)
-- Zahlungsbedingungen (Vorauskasse, 50/50, Netto 30, …)
-- Datenblatt-Downloads pro Produkt
-- Einheitliches Storefront-Design (Home = Shop Hero)
-- Prisma-Persistenz, Stock-Locks, Rate-Limits
-- ERP-Adapter `mock` | `rest` | `business-central` (Auftrag **und** Rechnung)
-- Admin: Firmen freischalten, Rabatte, ERP-Status, Sync
+Admin (/admin)                 nur intern (nicht in Kunden-Navigation)
+ERP                            mock | rest | business-central
+```
 
-## Quick start
+## Demo starten
 
 ```bash
 cp .env.example .env
 npm install
-npx prisma migrate reset --force
+npx prisma db push
 npm run db:seed
 npm run dev
 ```
 
-- Shop: http://localhost:3000
-- Registrierung: `/register` · Login: `/login` · Konto/Freigaben: `/account`
-- Admin: `/admin` (Passwort aus `ADMIN_PASSWORD`)
+Shop: http://localhost:3000
 
-### Demo-Zugänge (nach Seed)
+### Demo-Logins (nach Seed)
 
 | Rolle | E-Mail | Passwort |
 |-------|--------|----------|
@@ -43,44 +39,28 @@ npm run dev
 | Einkauf | einkauf@mueller-fertigung.example | demo-b2b-1234 |
 | Firmen-Admin | admin@mueller-fertigung.example | demo-b2b-1234 |
 
-Rabattcode: `PHT-B2B-10` (10 %, 90 Tage Laufzeit)
+- Rabatt: `PHT-B2B-10`
+- Admin: `/admin` · Passwort aus `ADMIN_PASSWORD`
 
-## Ablauf
+## Demo-Walkthrough (Struktur prüfen)
 
-1. Firma registriert sich → Status `pending`
-2. PHT schaltet Firma im Admin auf `active`
-3. Nutzer bestellt im Shop → Status `awaiting_production_approval`
-4. Produktionsleiter gibt frei → `awaiting_purchasing_approval`
-5. Einkauf gibt frei → ERP erstellt **Auftrag + Rechnung**
+1. Startseite → Kategorie wählen oder Suche
+2. Artikel öffnen → Menge → **In den Warenkorb**
+3. Warenkorb → **Zur Kasse**
+4. Als B2B anmelden → Adresse + Zahlungsbedingung → absenden
+5. Als Produktionsleiter freigeben (`/account`)
+6. Als Einkauf freigeben → Mock-ERP legt Auftrag + Rechnung an
+7. Auftrag in Mein Konto prüfen
 
-## ERP-Adapter
+## Was Demo bewusst noch nicht ist
 
-Der Webshop spricht ERP nur über Adapter — ohne Mastertool.
+- Kein produktiver BC-Write
+- Kein fester Public-Deploy
+- Demo-Artikel/Bilder (Platzhalter bis echter Katalog)
 
-| `ERP_PROVIDER` | Zweck |
-|----------------|--------|
-| `mock` | Eingebauter Demo-ERP (Default, sofort nutzbar) |
-| `rest` | Generische REST-API / Middleware / Demo-Server |
-| `business-central` / `bc` | Microsoft Dynamics 365 Business Central (OData v2) |
+## Live später (erst wenn Demo passt)
 
-### Demo REST-ERP lokal
-
-```bash
-npm run erp:demo
-# in .env:
-# ERP_PROVIDER=rest
-# ERP_BASE_URL=http://127.0.0.1:4010
-# ERP_API_KEY=demo-erp-key
-```
-
-`POST /orders` muss zurückgeben:
-
-```json
-{ "id": "ERP-ORD-1", "invoiceId": "ERP-INV-1", "invoiceNumber": "RE-1001" }
-```
-
-### Business Central
-
-In `.env` die `BC_*` Werte setzen und `ERP_PROVIDER=business-central`.
-Schreiben (Auftrag/Rechnung) nur mit `BC_ALLOW_WRITE=true` — idealerweise gegen eine **Sandbox**.
-Firmen brauchen `erpCustomerId` (= BC Customer Number) oder `BC_DEFAULT_CUSTOMER_NUMBER`.
+1. Echte Produkt-/Preisdaten
+2. `ERP_PROVIDER=business-central` + Sandbox-Test
+3. Stabiler Hosting-Deploy
+4. `DEMO_MODE=false`
