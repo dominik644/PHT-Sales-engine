@@ -7,25 +7,24 @@ ERP aktuell: **Mock** (kein echtes Business Central nötig).
 
 ## Feste Demo-URL (wie Mastertool)
 
-Ziel wie `https://pht-mastertool.vercel.app`:
+**Live:** [`https://pht-webshop.vercel.app`](https://pht-webshop.vercel.app)  
+(wie Mastertool: `https://pht-mastertool.vercel.app`)
 
-**`https://pht-webshop.vercel.app`**
+- Vercel-Projekt: `pht-powertool/pht-webshop`
+- GitHub verbunden → Pushes erzeugen Deployments
+- Demo-Leitfaden: [`/demo`](https://pht-webshop.vercel.app/demo)
+- Status bleibt Demo (`DEMO_MODE=true`), kein Live-Go
 
-Einmalig in Vercel (gleiches Konto/Team wie Mastertool):
-
-1. [vercel.com/new](https://vercel.com/new) → Repo `dominik644/PHT-Sales-engine` importieren
-2. Project Name: `pht-webshop`
-3. Environment Variables setzen:
+Env in Vercel (bereits gesetzt):
 
 | Name | Wert |
 |------|------|
 | `DEMO_MODE` | `true` |
 | `DATABASE_URL` | `file:/tmp/pht-webshop-demo.db` |
-| `ADMIN_PASSWORD` | (Demo-Admin-Passwort) |
-| `SESSION_SECRET` | (≥32 Zeichen) |
+| `ADMIN_PASSWORD` | (gesetzt) |
+| `SESSION_SECRET` | (gesetzt) |
 | `ERP_PROVIDER` | `mock` |
 
-4. Production Branch: `main` oder diese Demo-Branch — danach bleibt die URL gleich, jeder Push aktualisiert sie.
 
 
 ## Shop-Struktur (Demo)
