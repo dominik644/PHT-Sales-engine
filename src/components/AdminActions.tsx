@@ -68,7 +68,7 @@ export function AdminActions({ retryOrderId }: { retryOrderId?: string }) {
         disabled={busy}
         onClick={retryErp}
       >
-        Retry ERP
+        ERP erneut senden
       </button>
     );
   }
@@ -81,7 +81,7 @@ export function AdminActions({ retryOrderId }: { retryOrderId?: string }) {
         disabled={busy}
         onClick={syncProducts}
       >
-        Sync products from ERP
+        Produkte aus ERP synchronisieren
       </button>
       <button type="button" className="btn btn--ink" onClick={logout}>
         Abmelden
