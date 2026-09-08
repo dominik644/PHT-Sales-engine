@@ -29,6 +29,20 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           <Link href={`/product/${product.slug}`}>{product.name}</Link>
         </h3>
         <p className="muted">{product.tagline}</p>
+        {product.datasheets.length > 0 ? (
+          <p className="product-tile__docs">
+            {product.datasheets.map((sheet) => (
+              <a
+                key={sheet.id}
+                href={`/api/datasheets/${sheet.id}/download`}
+                className="datasheet-chip"
+                download={sheet.fileName}
+              >
+                Datenblatt
+              </a>
+            ))}
+          </p>
+        ) : null}
         <div className="product-tile__buy">
           <p className="price">{formatMoney(product.priceCents)}</p>
           {product.stock > 0 ? (

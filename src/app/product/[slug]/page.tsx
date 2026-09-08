@@ -83,21 +83,40 @@ export default async function ProductPage({
           {product.datasheets.length > 0 ? (
             <div className="datasheet-list">
               <p className="eyebrow">Dokumente</p>
+              <h2 className="datasheet-list__title">Datenblätter herunterladen</h2>
+              <p className="muted datasheet-list__hint">
+                Technische Unterlagen und Sicherheitsdatenblätter zu diesem Gerät.
+              </p>
               <ul>
                 {product.datasheets.map((sheet) => (
                   <li key={sheet.id}>
                     <a
-                      href={`/${sheet.filePath}`}
+                      href={`/api/datasheets/${sheet.id}/download`}
+                      className="btn btn--primary btn--sm datasheet-download"
                       download={sheet.fileName}
-                      className="btn btn--ink btn--sm"
                     >
-                      {sheet.title} (PDF)
+                      {sheet.title} · PDF laden
+                    </a>
+                    <a
+                      href={`/${sheet.filePath}`}
+                      className="datasheet-preview"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Vorschau
                     </a>
                   </li>
                 ))}
               </ul>
             </div>
-          ) : null}
+          ) : (
+            <div className="datasheet-list datasheet-list--empty">
+              <p className="eyebrow">Dokumente</p>
+              <p className="muted">
+                Für diesen Artikel ist noch kein Datenblatt hinterlegt.
+              </p>
+            </div>
+          )}
 
           <div className="product-detail__actions">
             {product.stock > 0 ? (

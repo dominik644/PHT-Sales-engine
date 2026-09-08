@@ -378,13 +378,7 @@ async function main() {
     },
   });
 
-  const entry = await prisma.product.findUnique({
-    where: { sku: "PHT-SCHLEUSE-ENTRY" },
-  });
-  const foam = await prisma.product.findUnique({
-    where: { sku: "PHT-SCHAUM-ND" },
-  });
-
+  // Datenblätter für alle Geräte (+ SDB für Verbrauchschemikalien)
   const { writeFile, mkdir } = await import("node:fs/promises");
   const path = await import("node:path");
   await mkdir(path.join(process.cwd(), "public", "datasheets"), {
@@ -399,17 +393,17 @@ async function main() {
   ) {
     const fileName = `${sku.toLowerCase()}-datenblatt.pdf`;
     const filePath = `datasheets/${fileName}`;
+    const bodyLines = lines
+      .map((line, i) => (i === 0 ? `(${line}) Tj` : `0 -18 Td (${line}) Tj`))
+      .join("\n");
+    const stream = ["BT /F1 12 Tf 50 740 Td", bodyLines, "ET"].join("\n");
     const content = [
-      "%PDF-1.1",
+      "%PDF-1.4",
       "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj",
       "2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj",
       "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj",
-      `4 0 obj<< /Length ${200 + lines.join(" ").length} >>stream`,
-      "BT /F1 12 Tf 50 740 Td",
-      ...lines.map((line, i) =>
-        i === 0 ? `(${line}) Tj` : `0 -18 Td (${line}) Tj`,
-      ),
-      "ET",
+      `4 0 obj<< /Length ${stream.length} >>stream`,
+      stream,
       "endstream endobj",
       "5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj",
       "xref",
@@ -427,28 +421,48 @@ async function main() {
     ].join("\n");
     await writeFile(path.join(process.cwd(), "public", filePath), content);
     await prisma.productDatasheet.create({
-      data: { productId, title, fileName, filePath },
+      data: {
+        productId,
+        title,
+        fileName,
+        filePath,
+        mimeType: "application/pdf",
+      },
     });
   }
 
-  if (entry) {
-    await writeSheet(entry.id, entry.sku, "Technisches Datenblatt", [
-      "PHT Group - Technisches Datenblatt",
-      `SKU: ${entry.sku}`,
-      "Hygieneschleuse Entry",
-      "Personalhygiene | Zutritt mit Hygiene-Freigabe",
-    ]);
-  }
-  if (foam) {
-    await writeSheet(foam.id, foam.sku, "Technisches Datenblatt", [
-      "PHT Group - Technisches Datenblatt",
-      `SKU: ${foam.sku}`,
-      "Niederdruck-Schaumreinigung",
-      "Betriebshygiene | Schaumreinigungssystem",
+  const allProducts = await prisma.product.findMany({
+    where: { active: true },
+    select: { id: true, sku: true, name: true, category: true },
+  });
+
+  const chemicalSkus = new Set(["PHT-HAND-1L", "PHT-FARBSYSTEM"]);
+  const serviceSkus = new Set(["PHT-WARTUNG-12", "PHT-KUNDENDIENST"]);
+
+  for (const product of allProducts) {
+    if (serviceSkus.has(product.sku)) continue;
+
+    const isChemical = chemicalSkus.has(product.sku);
+    const title = isChemical
+      ? "Sicherheitsdatenblatt (SDB)"
+      : "Technisches Datenblatt";
+
+    await writeSheet(product.id, product.sku, title, [
+      "PHT Group - Dokument",
+      title,
+      `SKU: ${product.sku}`,
+      product.name.replace(/[()]/g, " "),
+      `Bereich: ${product.category}`,
+      "Demo-PDF - Originaldatenblatt folgt im Live-Betrieb",
     ]);
   }
 
-  console.log("Seeded PHT Group catalog (Personal-/Betriebs-/Prozesstechnik + Service)");
+  console.log(
+    "Seeded PHT Group catalog (Personal-/Betriebs-/Prozesstechnik + Service)",
+  );
+  console.log(
+    `Datasheets: ${allProducts.length - serviceSkus.size} Geräte/Dokumente`,
+  );
   console.log("Discount code: PHT-B2B-10 (10%, 90 days)");
 }
 
