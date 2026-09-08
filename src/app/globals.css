@@ -175,6 +175,10 @@ select {
   color: white;
 }
 
+.hero--compact {
+  min-height: min(70svh, 640px);
+}
+
 .hero__media {
   position: absolute;
   inset: 0;
@@ -264,14 +268,34 @@ select {
   background: #a7ffcb;
 }
 
-.btn--ghost {
+.btn--ghost-ink {
   background: transparent;
-  color: white;
-  border-color: rgba(255, 255, 255, 0.45);
+  color: var(--ink);
+  border-color: var(--line);
 }
 
-.btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
+.btn--ghost-ink:hover {
+  background: rgba(14, 26, 36, 0.04);
+}
+
+.datasheet-list {
+  margin: 1.25rem 0;
+}
+
+.datasheet-list ul {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.store-panel {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.store-surface {
+  animation: rise 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .btn--ink {

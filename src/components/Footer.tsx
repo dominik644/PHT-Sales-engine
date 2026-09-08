@@ -10,7 +10,8 @@ export function Footer() {
         </div>
         <div className="site-footer__links">
           <Link href="/shop">Shop all</Link>
-          <Link href="/checkout">Checkout</Link>
+          <Link href="/account">Historie</Link>
+          <Link href="/login">Login</Link>
         </div>
       </div>
     </footer>

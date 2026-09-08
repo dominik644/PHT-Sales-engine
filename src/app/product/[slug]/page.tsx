@@ -28,7 +28,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   return (
-    <article className="product-detail">
+    <article className="product-detail store-surface">
       <div
         className="product-detail__media"
         style={{ backgroundColor: product.accent }}
@@ -49,8 +49,28 @@ export default async function ProductPage({
         <p className="price">{formatMoney(product.priceCents)}</p>
         <p className="muted">{product.description}</p>
         <p className="muted" style={{ marginTop: "0.75rem" }}>
-          In stock: <strong>{product.stock}</strong> · SKU {product.sku}
+          Bestand: <strong>{product.stock}</strong> · SKU {product.sku}
         </p>
+
+        {product.datasheets.length > 0 ? (
+          <div className="datasheet-list">
+            <p className="eyebrow">Datenblätter</p>
+            <ul>
+              {product.datasheets.map((sheet) => (
+                <li key={sheet.id}>
+                  <a
+                    href={`/${sheet.filePath}`}
+                    download={sheet.fileName}
+                    className="btn btn--ink"
+                  >
+                    {sheet.title} herunterladen
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div className="product-detail__actions">
           {product.stock > 0 ? (
             <AddToCartButton
@@ -64,11 +84,11 @@ export default async function ProductPage({
             />
           ) : (
             <button type="button" className="btn btn--ink" disabled>
-              Out of stock
+              Nicht lieferbar
             </button>
           )}
-          <Link href="/shop" className="btn btn--ink">
-            Back to shop
+          <Link href="/shop" className="btn btn--ghost-ink">
+            Zurück zur Collection
           </Link>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ProductCard } from "@/components/ProductCard";
+import { StoreHero } from "@/components/StoreHero";
 import { listActiveProducts } from "@/lib/catalog";
 
 export const metadata: Metadata = {
@@ -11,18 +12,26 @@ export const dynamic = "force-dynamic";
 
 export default async function ShopPage() {
   const products = await listActiveProducts();
+  const first = products[0];
 
   return (
     <>
-      <header className="page-intro">
-        <p className="eyebrow">Catalog</p>
-        <h1>Shop</h1>
-        <p className="muted" style={{ maxWidth: "42ch" }}>
-          Products and stock are synced from your ERP. Prices shown include the
-          current warehouse quantity.
-        </p>
-      </header>
-      <section className="section" style={{ paddingTop: "1.5rem" }}>
+      <StoreHero
+        headline="Goods that earn their place."
+        support="B2B Sales Engine: Registrierung, Freigaben (Produktionsleiter → Einkauf), Rabatte mit Laufzeit — Aufträge und Rechnungen entstehen im ERP."
+        primaryHref="/shop"
+        primaryLabel="Shop the collection"
+        secondaryHref={first ? `/product/${first.slug}` : "/register"}
+        secondaryLabel={first ? `View ${first.name}` : "Registrieren"}
+      />
+
+      <section className="section">
+        <div className="section__head">
+          <div>
+            <p className="eyebrow">Collection</p>
+            <h2>Selected for daily use</h2>
+          </div>
+        </div>
         <div className="product-grid">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />

@@ -19,6 +19,34 @@ CREATE TABLE "Product" (
 );
 
 -- CreateTable
+CREATE TABLE "PaymentTerm" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "depositPercent" INTEGER NOT NULL DEFAULT 100,
+    "balancePercent" INTEGER NOT NULL DEFAULT 0,
+    "balanceDueDays" INTEGER NOT NULL DEFAULT 0,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "ProductDatasheet" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "productId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "filePath" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL DEFAULT 'application/pdf',
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ProductDatasheet_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "Company" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
@@ -30,8 +58,10 @@ CREATE TABLE "Company" (
     "country" TEXT NOT NULL DEFAULT 'DE',
     "status" TEXT NOT NULL DEFAULT 'pending',
     "erpCustomerId" TEXT,
+    "defaultPaymentTermId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Company_defaultPaymentTermId_fkey" FOREIGN KEY ("defaultPaymentTermId") REFERENCES "PaymentTerm" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -85,6 +115,9 @@ CREATE TABLE "Order" (
     "currency" TEXT NOT NULL DEFAULT 'EUR',
     "discountId" TEXT,
     "discountCode" TEXT,
+    "paymentTermId" TEXT,
+    "paymentTermLabel" TEXT,
+    "paymentTermSnapshot" TEXT,
     "erpSyncStatus" TEXT NOT NULL DEFAULT 'pending',
     "erpOrderId" TEXT,
     "erpInvoiceId" TEXT,
@@ -95,7 +128,8 @@ CREATE TABLE "Order" (
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "Order_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Order_requesterId_fkey" FOREIGN KEY ("requesterId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "Order_discountId_fkey" FOREIGN KEY ("discountId") REFERENCES "Discount" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "Order_discountId_fkey" FOREIGN KEY ("discountId") REFERENCES "Discount" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Order_paymentTermId_fkey" FOREIGN KEY ("paymentTermId") REFERENCES "PaymentTerm" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -173,6 +207,9 @@ CREATE UNIQUE INDEX "Product_sku_key" ON "Product"("sku");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Product_slug_key" ON "Product"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PaymentTerm_code_key" ON "PaymentTerm"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");

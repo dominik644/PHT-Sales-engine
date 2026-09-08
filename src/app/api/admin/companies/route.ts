@@ -8,7 +8,10 @@ export async function GET() {
   }
   const companies = await prisma.company.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { users: true, orders: true } } },
+    include: {
+      _count: { select: { users: true, orders: true } },
+      defaultPaymentTerm: true,
+    },
   });
   return NextResponse.json({ companies });
 }
@@ -22,12 +25,14 @@ export async function PATCH(request: Request) {
     companyId?: string;
     status?: string;
     erpCustomerId?: string;
+    defaultPaymentTermId?: string | null;
   } | null;
 
-  if (!body?.companyId || !body.status) {
+  if (!body?.companyId) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
-  if (!["pending", "active", "suspended"].includes(body.status)) {
+
+  if (body.status && !["pending", "active", "suspended"].includes(body.status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
@@ -36,6 +41,10 @@ export async function PATCH(request: Request) {
     data: {
       status: body.status,
       erpCustomerId: body.erpCustomerId ?? undefined,
+      defaultPaymentTermId:
+        body.defaultPaymentTermId === undefined
+          ? undefined
+          : body.defaultPaymentTermId,
     },
   });
 

@@ -14,6 +14,13 @@ export type StoreProduct = {
   image: string;
   accent: string;
   stock: number;
+  datasheets: Array<{
+    id: string;
+    title: string;
+    fileName: string;
+    filePath: string;
+    mimeType: string;
+  }>;
 };
 
 export function toStoreProduct(p: {
@@ -28,6 +35,13 @@ export function toStoreProduct(p: {
   imageUrl: string;
   accent: string;
   stock: number;
+  datasheets?: Array<{
+    id: string;
+    title: string;
+    fileName: string;
+    filePath: string;
+    mimeType: string;
+  }>;
 }): StoreProduct {
   return {
     id: p.id,
@@ -42,6 +56,7 @@ export function toStoreProduct(p: {
     image: p.imageUrl,
     accent: p.accent,
     stock: p.stock,
+    datasheets: p.datasheets ?? [],
   };
 }
 
@@ -49,6 +64,7 @@ export async function listActiveProducts(): Promise<StoreProduct[]> {
   const rows = await prisma.product.findMany({
     where: { active: true },
     orderBy: { name: "asc" },
+    include: { datasheets: { orderBy: { sortOrder: "asc" } } },
   });
   return rows.map(toStoreProduct);
 }
@@ -56,7 +72,10 @@ export async function listActiveProducts(): Promise<StoreProduct[]> {
 export async function getProductBySlug(
   slug: string,
 ): Promise<StoreProduct | null> {
-  const row = await prisma.product.findUnique({ where: { slug } });
+  const row = await prisma.product.findUnique({
+    where: { slug },
+    include: { datasheets: { orderBy: { sortOrder: "asc" } } },
+  });
   if (!row || !row.active) return null;
   return toStoreProduct(row);
 }

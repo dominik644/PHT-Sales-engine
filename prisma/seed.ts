@@ -221,12 +221,125 @@ async function main() {
     },
   });
 
+  const paymentTerms = [
+    {
+      code: "VORKASSE",
+      name: "Vorauskasse 100%",
+      description: "Vollständige Zahlung vor Auftragsbestätigung / Produktion.",
+      depositPercent: 100,
+      balancePercent: 0,
+      balanceDueDays: 0,
+      sortOrder: 0,
+    },
+    {
+      code: "50-50",
+      name: "50/50",
+      description: "50% bei Auftragserteilung, 50% vor Lieferung.",
+      depositPercent: 50,
+      balancePercent: 50,
+      balanceDueDays: 0,
+      sortOrder: 1,
+    },
+    {
+      code: "NET-30",
+      name: "Netto 30 Tage",
+      description: "100% zahlbar innerhalb von 30 Tagen nach Rechnung.",
+      depositPercent: 0,
+      balancePercent: 100,
+      balanceDueDays: 30,
+      sortOrder: 2,
+    },
+  ];
+
+  for (const term of paymentTerms) {
+    await prisma.paymentTerm.upsert({
+      where: { code: term.code },
+      update: { ...term, active: true },
+      create: { ...term, active: true },
+    });
+  }
+
+  const fiftyFifty = await prisma.paymentTerm.findUnique({
+    where: { code: "50-50" },
+  });
+  if (fiftyFifty) {
+    await prisma.company.update({
+      where: { id: company.id },
+      data: { defaultPaymentTermId: fiftyFifty.id },
+    });
+  }
+
+  const { writeSimplePdf } = await import("../src/lib/pdf");
+  const path = await import("node:path");
+  const datasheetSpecs = [
+    {
+      sku: "PHT-ARC-LAMP",
+      title: "Technisches Datenblatt Arc Desk Lamp",
+      fileName: "arc-desk-lamp.pdf",
+      filePath: "datasheets/arc-desk-lamp.pdf",
+      lines: [
+        "PHT — Technisches Datenblatt",
+        "Arc Desk Lamp",
+        "SKU: PHT-ARC-LAMP",
+        "Spannung: 230V / LED dimmbar",
+        "Material: Stahl, pulverbeschichtet",
+        "Garantie: 24 Monate",
+      ],
+    },
+    {
+      sku: "PHT-PULSE-HP",
+      title: "Technisches Datenblatt Pulse Headphones",
+      fileName: "pulse-headphones.pdf",
+      filePath: "datasheets/pulse-headphones.pdf",
+      lines: [
+        "PHT — Technisches Datenblatt",
+        "Pulse Headphones",
+        "SKU: PHT-PULSE-HP",
+        "Akku: 36 Stunden",
+        "ANC: adaptiv",
+        "Anschluss: USB-C / Bluetooth 5.3",
+      ],
+    },
+  ];
+
+  for (const spec of datasheetSpecs) {
+    const product = await prisma.product.findUnique({ where: { sku: spec.sku } });
+    if (!product) continue;
+    writeSimplePdf(path.join(process.cwd(), "public", spec.filePath), spec.lines);
+    const existing = await prisma.productDatasheet.findFirst({
+      where: { productId: product.id, filePath: spec.filePath },
+    });
+    if (existing) {
+      await prisma.productDatasheet.update({
+        where: { id: existing.id },
+        data: {
+          title: spec.title,
+          fileName: spec.fileName,
+          mimeType: "application/pdf",
+        },
+      });
+    } else {
+      await prisma.productDatasheet.create({
+        data: {
+          productId: product.id,
+          title: spec.title,
+          fileName: spec.fileName,
+          filePath: spec.filePath,
+          mimeType: "application/pdf",
+          sortOrder: 0,
+        },
+      });
+    }
+  }
+
   console.log(`Seeded ${products.length} products`);
   console.log("Demo B2B company: Müller Fertigung GmbH (active)");
   console.log("  produktion@mueller-fertigung.example / demo-b2b-1234");
   console.log("  einkauf@mueller-fertigung.example / demo-b2b-1234");
   console.log("  admin@mueller-fertigung.example / demo-b2b-1234");
   console.log("Discount code: PHT-B2B-10 (10%, 90 days)");
+  console.log("Payment terms: VORKASSE, 50-50, NET-30");
+  console.log("Datasheets: public/datasheets/*.pdf");
 }
 
 main()

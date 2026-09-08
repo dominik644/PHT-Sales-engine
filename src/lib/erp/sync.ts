@@ -84,6 +84,8 @@ export async function pushOrderAndInvoiceToErp(orderId: string) {
     discountCents: order.discountCents,
     totalCents: order.totalCents,
     discountCode: order.discountCode,
+    paymentTermLabel: order.paymentTermLabel,
+    paymentTermSnapshot: order.paymentTermSnapshot,
     items: order.items.map((item) => ({
       sku: item.sku,
       name: item.name,

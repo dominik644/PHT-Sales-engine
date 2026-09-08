@@ -6,6 +6,7 @@ export const checkoutSchema = z.object({
   postal: z.string().trim().min(3).max(20),
   country: z.string().trim().length(2).default("DE"),
   discountCode: z.string().trim().max(40).optional().nullable(),
+  paymentTermId: z.string().min(1),
   items: z
     .array(
       z.object({
@@ -67,4 +68,24 @@ export const discountSchema = z.object({
 export const approvalSchema = z.object({
   decision: z.enum(["approved", "rejected"]),
   note: z.string().trim().max(500).optional().nullable(),
+});
+
+export const paymentTermSchema = z.object({
+  code: z.string().trim().min(2).max(40),
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().min(2).max(400),
+  depositPercent: z.number().int().min(0).max(100),
+  balancePercent: z.number().int().min(0).max(100),
+  balanceDueDays: z.number().int().min(0).max(365),
+  active: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
+export const datasheetSchema = z.object({
+  productId: z.string().min(1),
+  title: z.string().trim().min(2).max(160),
+  fileName: z.string().trim().min(3).max(160),
+  filePath: z.string().trim().min(3).max(240),
+  mimeType: z.string().trim().min(3).max(120).default("application/pdf"),
+  sortOrder: z.number().int().min(0).default(0),
 });

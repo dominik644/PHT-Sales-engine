@@ -60,6 +60,7 @@ export async function POST(request: Request) {
   const input = parsed.data;
   const company = await prisma.company.findUnique({
     where: { id: session.companyId },
+    include: { defaultPaymentTerm: true },
   });
   if (!company || company.status !== "active") {
     return NextResponse.json(
@@ -67,6 +68,32 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
+
+  const paymentTerm = await prisma.paymentTerm.findFirst({
+    where: { id: input.paymentTermId, active: true },
+  });
+  if (!paymentTerm) {
+    return NextResponse.json(
+      { error: "Ungültige Zahlungsbedingung." },
+      { status: 400 },
+    );
+  }
+
+  const paymentTermSnapshot = JSON.stringify({
+    code: paymentTerm.code,
+    name: paymentTerm.name,
+    description: paymentTerm.description,
+    depositPercent: paymentTerm.depositPercent,
+    balancePercent: paymentTerm.balancePercent,
+    balanceDueDays: paymentTerm.balanceDueDays,
+  });
+  const paymentTermLabel = `${paymentTerm.name} (${paymentTerm.depositPercent}/${paymentTerm.balancePercent}${
+    paymentTerm.balanceDueDays
+      ? `, Rest in ${paymentTerm.balanceDueDays} Tagen`
+      : paymentTerm.balancePercent > 0
+        ? ", Rest bei Lieferung"
+        : ""
+  })`;
 
   const productIds = input.items.map((i) => i.productId);
   const products = await prisma.product.findMany({
@@ -145,6 +172,9 @@ export async function POST(request: Request) {
           totalCents,
           discountId: applied?.id,
           discountCode: applied?.code,
+          paymentTermId: paymentTerm.id,
+          paymentTermLabel,
+          paymentTermSnapshot,
           erpSyncStatus: "pending",
           ipHash: hashIp(ip),
           userAgent: request.headers.get("user-agent")?.slice(0, 300) ?? undefined,
@@ -152,8 +182,7 @@ export async function POST(request: Request) {
           events: {
             create: {
               type: "created",
-              message:
-                "B2B-Auftrag erstellt — wartet auf Freigabe Produktionsleiter",
+              message: `B2B-Auftrag erstellt (${paymentTermLabel}) — wartet auf Freigabe Produktionsleiter`,
             },
           },
         },
@@ -183,6 +212,7 @@ export async function POST(request: Request) {
       discountCents: order.discountCents,
       totalCents: order.totalCents,
       discountCode: order.discountCode,
+      paymentTermLabel: order.paymentTermLabel,
       erpSyncStatus: order.erpSyncStatus,
       message:
         "Auftrag eingereicht. Nächster Schritt: Freigabe durch Produktionsleiter, danach Einkauf. Erst dann erstellt das ERP Auftrag und Rechnung.",

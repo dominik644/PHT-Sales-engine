@@ -8,43 +8,80 @@ datasource db {
 }
 
 model Product {
-  id          String      @id @default(cuid())
-  erpId       String?     @unique
-  sku         String      @unique
-  slug        String      @unique
+  id          String             @id @default(cuid())
+  erpId       String?            @unique
+  sku         String             @unique
+  slug        String             @unique
   name        String
   category    String
   tagline     String
   description String
   priceCents  Int
-  currency    String      @default("EUR")
+  currency    String             @default("EUR")
   imageUrl    String
-  accent      String      @default("#1F4B3A")
-  stock       Int         @default(0)
-  active      Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  accent      String             @default("#1F4B3A")
+  stock       Int                @default(0)
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   lineItems   OrderItem[]
+  datasheets  ProductDatasheet[]
+}
+
+/// PHT-definierte Zahlungsbedingungen (Vorauskasse, 50/50, …)
+model PaymentTerm {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  name            String
+  description     String
+  /// Anteil bei Auftragserteilung in %
+  depositPercent  Int       @default(100)
+  /// Restanteil in %
+  balancePercent  Int       @default(0)
+  /// Rest fällig nach X Tagen (0 = bei Lieferung / sofort)
+  balanceDueDays  Int       @default(0)
+  active          Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  companies       Company[]
+  orders          Order[]
+}
+
+/// Technische Datenblätter zum Download
+model ProductDatasheet {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title     String
+  fileName  String
+  /// Relativer Pfad unter /public, z. B. datasheets/arc.pdf
+  filePath  String
+  mimeType  String   @default("application/pdf")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 /// B2B Kundenfirma
 model Company {
-  id             String     @id @default(cuid())
-  name           String
-  vatId          String?
-  billingEmail   String
-  addressLine1   String
-  city           String
-  postalCode     String
-  country        String     @default("DE")
+  id                   String       @id @default(cuid())
+  name                 String
+  vatId                String?
+  billingEmail         String
+  addressLine1         String
+  city                 String
+  postalCode           String
+  country              String       @default("DE")
   /// pending | active | suspended
-  status         String     @default("pending")
-  erpCustomerId  String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  users          User[]
-  orders         Order[]
-  discounts      Discount[]
+  status               String       @default("pending")
+  erpCustomerId        String?
+  defaultPaymentTermId String?
+  defaultPaymentTerm   PaymentTerm? @relation(fields: [defaultPaymentTermId], references: [id])
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  users                User[]
+  orders               Order[]
+  discounts            Discount[]
 }
 
 /// B2B Nutzer mit Freigabe-Rolle
@@ -106,6 +143,10 @@ model Order {
   discountId         String?
   discount           Discount?       @relation(fields: [discountId], references: [id])
   discountCode       String?
+  paymentTermId      String?
+  paymentTerm        PaymentTerm?    @relation(fields: [paymentTermId], references: [id])
+  paymentTermLabel   String?
+  paymentTermSnapshot String?
   /// pending | synced | failed | skipped
   erpSyncStatus      String          @default("pending")
   erpOrderId         String?

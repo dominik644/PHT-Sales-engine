@@ -27,6 +27,8 @@ export type ErpOrderPayload = {
   discountCents: number;
   totalCents: number;
   discountCode?: string | null;
+  paymentTermLabel?: string | null;
+  paymentTermSnapshot?: string | null;
   items: Array<{
     sku: string;
     name: string;

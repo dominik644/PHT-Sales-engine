@@ -9,6 +9,9 @@ Auftrag + Rechnung.
 - B2B-Registrierung & Login (Rollen: Produktionsleiter, Einkauf, Firmen-Admin)
 - Freigabe-Kette vor ERP-Übergabe
 - Rabatte mit `validFrom` / `validTo` (PHT Admin)
+- Zahlungsbedingungen (Vorauskasse, 50/50, Netto 30, …)
+- Datenblatt-Downloads pro Produkt
+- Einheitliches Storefront-Design (Home = Shop Hero)
 - Prisma-Persistenz, Stock-Locks, Rate-Limits
 - ERP-Adapter `mock` | `rest` (legt Auftrag **und** Rechnung an)
 - Admin: Firmen freischalten, Rabatte, Sync
