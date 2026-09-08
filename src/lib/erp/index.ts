@@ -1,3 +1,4 @@
+import { BusinessCentralErpAdapter } from "./business-central";
 import { MockErpAdapter } from "./mock";
 import { RestErpAdapter } from "./rest";
 import type { ErpAdapter } from "./types";
@@ -12,7 +13,19 @@ export function getErpAdapter(): ErpAdapter {
     );
   }
 
+  if (
+    provider === "bc" ||
+    provider === "business-central" ||
+    provider === "businesscentral"
+  ) {
+    return new BusinessCentralErpAdapter();
+  }
+
   return new MockErpAdapter();
 }
 
 export type { ErpAdapter, ErpProduct, ErpOrderPayload } from "./types";
+export {
+  getBusinessCentralStatus,
+  isBusinessCentralConfigured,
+} from "./business-central";

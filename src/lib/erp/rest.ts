@@ -2,10 +2,11 @@ import type { ErpAdapter, ErpOrderPayload, ErpOrderResult, ErpProduct } from "./
 
 /**
  * Generic REST ERP adapter.
- * Expects endpoints:
- *   GET  {ERP_BASE_URL}/products  -> ErpProduct[]
- *   POST {ERP_BASE_URL}/orders    -> { id: string }
- *   GET  {ERP_BASE_URL}/stock/{sku} -> { stock: number }
+ * Expects endpoints (paths overridable via env):
+ *   GET  {ERP_BASE_URL}{ERP_PRODUCTS_PATH|/products}  -> ErpProduct[]
+ *   POST {ERP_BASE_URL}{ERP_ORDERS_PATH|/orders}      -> { id, invoiceId, invoiceNumber }
+ *   GET  {ERP_BASE_URL}{ERP_STOCK_PATH|/stock}/{sku}  -> { stock: number }
+ *   GET  {ERP_BASE_URL}{ERP_HEALTH_PATH|/health}      -> { ok?: boolean } (optional)
  *
  * Auth: Authorization: Bearer {ERP_API_KEY}
  * Compatible with middleware in front of Xentral, weclapp, SAP B1, etc.
@@ -13,12 +14,23 @@ import type { ErpAdapter, ErpOrderPayload, ErpOrderResult, ErpProduct } from "./
 export class RestErpAdapter implements ErpAdapter {
   readonly name = "rest";
 
+  private readonly productsPath: string;
+  private readonly ordersPath: string;
+  private readonly stockPath: string;
+  private readonly healthPath: string;
+  private readonly timeoutMs: number;
+
   constructor(
     private readonly baseUrl: string,
     private readonly apiKey: string,
   ) {
     if (!baseUrl) throw new Error("ERP_BASE_URL is required for rest adapter");
     if (!apiKey) throw new Error("ERP_API_KEY is required for rest adapter");
+    this.productsPath = process.env.ERP_PRODUCTS_PATH || "/products";
+    this.ordersPath = process.env.ERP_ORDERS_PATH || "/orders";
+    this.stockPath = process.env.ERP_STOCK_PATH || "/stock";
+    this.healthPath = process.env.ERP_HEALTH_PATH || "/health";
+    this.timeoutMs = Number(process.env.ERP_TIMEOUT_MS || 30_000);
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -31,6 +43,7 @@ export class RestErpAdapter implements ErpAdapter {
         ...(init?.headers ?? {}),
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(this.timeoutMs),
     });
 
     if (!res.ok) {
@@ -41,8 +54,36 @@ export class RestErpAdapter implements ErpAdapter {
     return (await res.json()) as T;
   }
 
+  async healthCheck(): Promise<{ ok: boolean; detail: string }> {
+    try {
+      const result = await this.request<{ ok?: boolean; provider?: string }>(
+        this.healthPath,
+      );
+      return {
+        ok: result.ok !== false,
+        detail: result.provider
+          ? `REST OK (${result.provider})`
+          : `REST OK @ ${this.baseUrl}`,
+      };
+    } catch (error) {
+      // Health endpoint is optional — fall back to products list.
+      try {
+        const products = await this.fetchProducts();
+        return {
+          ok: true,
+          detail: `REST reachable (${products.length} products)`,
+        };
+      } catch (inner) {
+        return {
+          ok: false,
+          detail: inner instanceof Error ? inner.message : "REST health failed",
+        };
+      }
+    }
+  }
+
   fetchProducts(): Promise<ErpProduct[]> {
-    return this.request<ErpProduct[]>("/products");
+    return this.request<ErpProduct[]>(this.productsPath);
   }
 
   async pushOrder(order: ErpOrderPayload): Promise<ErpOrderResult> {
@@ -50,7 +91,7 @@ export class RestErpAdapter implements ErpAdapter {
       id: string;
       invoiceId: string;
       invoiceNumber: string;
-    }>("/orders", {
+    }>(this.ordersPath, {
       method: "POST",
       body: JSON.stringify(order),
     });
@@ -63,7 +104,7 @@ export class RestErpAdapter implements ErpAdapter {
 
   async fetchStock(sku: string): Promise<number | null> {
     const result = await this.request<{ stock: number }>(
-      `/stock/${encodeURIComponent(sku)}`,
+      `${this.stockPath}/${encodeURIComponent(sku)}`,
     );
     return result.stock;
   }

@@ -16,8 +16,8 @@ Auth, keine geteilten Packages und keine Runtime-Kopplung zum Mastertool
 - Datenblatt-Downloads pro Produkt
 - Einheitliches Storefront-Design (Home = Shop Hero)
 - Prisma-Persistenz, Stock-Locks, Rate-Limits
-- ERP-Adapter `mock` | `rest` (legt Auftrag **und** Rechnung an)
-- Admin: Firmen freischalten, Rabatte, Sync
+- ERP-Adapter `mock` | `rest` | `business-central` (Auftrag **und** Rechnung)
+- Admin: Firmen freischalten, Rabatte, ERP-Status, Sync
 
 ## Quick start
 
@@ -51,10 +51,34 @@ Rabattcode: `PHT-B2B-10` (10 %, 90 Tage Laufzeit)
 4. Produktionsleiter gibt frei → `awaiting_purchasing_approval`
 5. Einkauf gibt frei → ERP erstellt **Auftrag + Rechnung**
 
-## ERP REST
+## ERP-Adapter
+
+Der Webshop spricht ERP nur über Adapter — ohne Mastertool.
+
+| `ERP_PROVIDER` | Zweck |
+|----------------|--------|
+| `mock` | Eingebauter Demo-ERP (Default, sofort nutzbar) |
+| `rest` | Generische REST-API / Middleware / Demo-Server |
+| `business-central` / `bc` | Microsoft Dynamics 365 Business Central (OData v2) |
+
+### Demo REST-ERP lokal
+
+```bash
+npm run erp:demo
+# in .env:
+# ERP_PROVIDER=rest
+# ERP_BASE_URL=http://127.0.0.1:4010
+# ERP_API_KEY=demo-erp-key
+```
 
 `POST /orders` muss zurückgeben:
 
 ```json
 { "id": "ERP-ORD-1", "invoiceId": "ERP-INV-1", "invoiceNumber": "RE-1001" }
 ```
+
+### Business Central
+
+In `.env` die `BC_*` Werte setzen und `ERP_PROVIDER=business-central`.
+Schreiben (Auftrag/Rechnung) nur mit `BC_ALLOW_WRITE=true` — idealerweise gegen eine **Sandbox**.
+Firmen brauchen `erpCustomerId` (= BC Customer Number) oder `BC_DEFAULT_CUSTOMER_NUMBER`.

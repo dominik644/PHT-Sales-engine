@@ -150,4 +150,11 @@ export class MockErpAdapter implements ErpAdapter {
   async fetchStock(sku: string): Promise<number | null> {
     return this.stock.has(sku) ? (this.stock.get(sku) ?? 0) : null;
   }
+
+  async healthCheck(): Promise<{ ok: boolean; detail: string }> {
+    return {
+      ok: true,
+      detail: `Mock ERP ready (${this.stock.size} SKUs)`,
+    };
+  }
 }

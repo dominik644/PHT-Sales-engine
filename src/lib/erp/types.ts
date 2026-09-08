@@ -49,4 +49,5 @@ export interface ErpAdapter {
   /** ERP legt Auftrag UND Rechnung an */
   pushOrder(order: ErpOrderPayload): Promise<ErpOrderResult>;
   fetchStock(sku: string): Promise<number | null>;
+  healthCheck?(): Promise<{ ok: boolean; detail: string }>;
 }

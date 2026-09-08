@@ -1,12 +1,28 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function AdminActions({ retryOrderId }: { retryOrderId?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [erpStatus, setErpStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch("/api/admin/erp-status");
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        adapter?: string;
+        health?: { ok?: boolean; detail?: string };
+      };
+      const label = data.health?.ok
+        ? `ERP ${data.adapter}: ${data.health.detail}`
+        : `ERP ${data.adapter}: ${data.health?.detail ?? "offline"}`;
+      setErpStatus(label);
+    })();
+  }, []);
 
   async function syncProducts() {
     setBusy(true);
@@ -70,6 +86,7 @@ export function AdminActions({ retryOrderId }: { retryOrderId?: string }) {
       <button type="button" className="btn btn--ink" onClick={logout}>
         Log out
       </button>
+      {erpStatus ? <p className="muted">{erpStatus}</p> : null}
       {message ? <p className="muted">{message}</p> : null}
     </div>
   );
