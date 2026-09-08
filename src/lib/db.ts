@@ -28,10 +28,15 @@ function ensureDemoSqlite() {
   const targetPath = url.replace(/^file:/, "");
   if (!existsSync(targetPath)) {
     mkdirSync(dirname(targetPath), { recursive: true });
-    const seedPath = join(process.cwd(), "data", "demo.db");
-    if (!existsSync(seedPath)) {
+    const candidates = [
+      join(process.cwd(), "data", "demo.db"),
+      join(__dirname, "..", "..", "data", "demo.db"),
+      "/var/task/data/demo.db",
+    ];
+    const seedPath = candidates.find((p) => existsSync(p));
+    if (!seedPath) {
       throw new Error(
-        `Demo DB missing at ${seedPath}. Run npm run db:seed locally and commit data/demo.db.`,
+        `Demo DB missing. Looked in: ${candidates.join(", ")}. Run npm run db:seed and commit data/demo.db.`,
       );
     }
     copyFileSync(seedPath, targetPath);
