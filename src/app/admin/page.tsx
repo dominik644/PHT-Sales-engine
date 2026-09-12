@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/security";
 import { formatMoney } from "@/lib/money";
 import { AdminActions } from "@/components/AdminActions";
 import { AdminB2BPanel } from "@/components/AdminB2BPanel";
+import { AdminOpsHealth } from "@/components/AdminOpsHealth";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,8 @@ export default async function AdminDashboardPage() {
           <p className="admin-stat">{pendingErp}</p>
         </div>
       </section>
+
+      <AdminOpsHealth />
 
       <AdminB2BPanel />
 
