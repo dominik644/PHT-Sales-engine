@@ -29,6 +29,18 @@ type InboxItem = {
   company: { name: string };
   note?: string;
   type?: string;
+  subject?: string;
+  message?: string;
+  adminNote?: string;
+  offeredTotalCents?: number | null;
+  offeredNote?: string;
+  items?: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    quantity: number;
+    unitCents: number | null;
+  }>;
 };
 
 type Discount = {
@@ -75,7 +87,11 @@ export function AdminB2BPanel() {
   const [priceGroups, setPriceGroups] = useState<PriceGroup[]>([]);
   const [quotes, setQuotes] = useState<InboxItem[]>([]);
   const [services, setServices] = useState<InboxItem[]>([]);
+  const [tickets, setTickets] = useState<InboxItem[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [offerDrafts, setOfferDrafts] = useState<
+    Record<string, { totalEuro: string; note: string }>
+  >({});
   const [form, setForm] = useState({
     code: "PHT-B2B-10",
     name: "B2B 10% Q3",
@@ -102,7 +118,7 @@ export function AdminB2BPanel() {
   });
 
   async function load() {
-    const [cRes, dRes, tRes, sRes, pRes, qRes, svcRes] = await Promise.all([
+    const [cRes, dRes, tRes, sRes, pRes, qRes, svcRes, tkRes] = await Promise.all([
       fetch("/api/admin/companies"),
       fetch("/api/admin/discounts"),
       fetch("/api/payment-terms"),
@@ -110,6 +126,7 @@ export function AdminB2BPanel() {
       fetch("/api/products"),
       fetch("/api/admin/quotes"),
       fetch("/api/admin/service-requests"),
+      fetch("/api/admin/tickets"),
     ]);
     if (cRes.ok) {
       const data = (await cRes.json()) as {
@@ -143,10 +160,29 @@ export function AdminB2BPanel() {
     if (qRes.ok) {
       const data = (await qRes.json()) as { quotes: InboxItem[] };
       setQuotes(data.quotes);
+      setOfferDrafts((prev) => {
+        const next = { ...prev };
+        for (const q of data.quotes) {
+          if (!next[q.id]) {
+            next[q.id] = {
+              totalEuro:
+                q.offeredTotalCents != null
+                  ? (q.offeredTotalCents / 100).toFixed(2)
+                  : "",
+              note: q.offeredNote ?? "",
+            };
+          }
+        }
+        return next;
+      });
     }
     if (svcRes.ok) {
       const data = (await svcRes.json()) as { requests: InboxItem[] };
       setServices(data.requests);
+    }
+    if (tkRes.ok) {
+      const data = (await tkRes.json()) as { tickets: InboxItem[] };
+      setTickets(data.tickets);
     }
   }
 
@@ -187,7 +223,7 @@ export function AdminB2BPanel() {
   }
 
   async function setInboxStatus(
-    kind: "quotes" | "service-requests",
+    kind: "quotes" | "service-requests" | "tickets",
     id: string,
     status: string,
   ) {
@@ -201,6 +237,33 @@ export function AdminB2BPanel() {
       return;
     }
     setMessage("Status aktualisiert");
+    await load();
+  }
+
+  async function offerQuote(id: string) {
+    const draft = offerDrafts[id];
+    const euros = Number(draft?.totalEuro?.replace(",", ".") ?? "");
+    if (!Number.isFinite(euros) || euros <= 0) {
+      setMessage("Bitte gültigen Angebotspreis (EUR) eingeben.");
+      return;
+    }
+    const res = await fetch("/api/admin/quotes", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        status: "offered",
+        offeredTotalCents: Math.round(euros * 100),
+        offeredNote: draft?.note ?? "",
+        validUntil: new Date(Date.now() + 30 * 86400000).toISOString(),
+      }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setMessage(data?.error ?? "Angebot konnte nicht gesetzt werden");
+      return;
+    }
+    setMessage("Angebot an Kunde gesendet (Status offered)");
     await load();
   }
 
@@ -677,21 +740,76 @@ export function AdminB2BPanel() {
           <div className="admin-table">
             {quotes.length === 0 ? <p className="muted">Keine offenen Anfragen.</p> : null}
             {quotes.map((q) => (
-              <div key={q.id} className="admin-row">
-                <div>
+              <div key={q.id} className="admin-row" style={{ alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
                   <strong>{q.number}</strong>
                   <p className="muted">
                     {q.company.name} · {new Date(q.createdAt).toLocaleString("de-DE")}
                   </p>
                   {q.note ? <p className="muted">{q.note}</p> : null}
+                  {q.items?.length ? (
+                    <p className="muted">
+                      {q.items
+                        .map((i) => `${i.name} × ${i.quantity}`)
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                  <div className="form-grid" style={{ marginTop: "0.5rem" }}>
+                    <label>
+                      Angebotspreis EUR
+                      <input
+                        value={offerDrafts[q.id]?.totalEuro ?? ""}
+                        onChange={(e) =>
+                          setOfferDrafts((d) => ({
+                            ...d,
+                            [q.id]: {
+                              totalEuro: e.target.value,
+                              note: d[q.id]?.note ?? "",
+                            },
+                          }))
+                        }
+                        placeholder="z. B. 1250.00"
+                      />
+                    </label>
+                    <label>
+                      Hinweis an Kunde
+                      <input
+                        value={offerDrafts[q.id]?.note ?? ""}
+                        onChange={(e) =>
+                          setOfferDrafts((d) => ({
+                            ...d,
+                            [q.id]: {
+                              totalEuro: d[q.id]?.totalEuro ?? "",
+                              note: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      onClick={() => void offerQuote(q.id)}
+                    >
+                      Als Angebot senden
+                    </button>
+                  </div>
                 </div>
                 <div className="admin-row__meta">
                   <span className="pill">{q.status}</span>
+                  {q.offeredTotalCents != null ? (
+                    <span className="muted">{formatMoney(q.offeredTotalCents)}</span>
+                  ) : null}
                   <select
                     value={q.status}
-                    onChange={(e) =>
-                      void setInboxStatus("quotes", q.id, e.target.value)
-                    }
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      if (next === "offered") {
+                        void offerQuote(q.id);
+                        return;
+                      }
+                      void setInboxStatus("quotes", q.id, next);
+                    }}
                   >
                     {["open", "in_progress", "offered", "accepted", "rejected", "expired"].map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -726,6 +844,49 @@ export function AdminB2BPanel() {
                   >
                     {["open", "confirmed", "done", "cancelled"].map((st) => (
                       <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-grid" style={{ marginTop: "1.25rem" }}>
+        <div className="panel">
+          <h2>Support-Tickets</h2>
+          <div className="admin-table">
+            {tickets.length === 0 ? <p className="muted">Keine Tickets.</p> : null}
+            {tickets.map((t) => (
+              <div key={t.id} className="admin-row">
+                <div>
+                  <strong>{t.number}</strong>
+                  <p className="muted">
+                    {t.company.name} · {t.type ?? "ticket"} ·{" "}
+                    {new Date(t.createdAt).toLocaleString("de-DE")}
+                  </p>
+                  {t.subject ? <p>{t.subject}</p> : null}
+                  {t.message ? <p className="muted">{t.message}</p> : null}
+                </div>
+                <div className="admin-row__meta">
+                  <span className="pill">{t.status}</span>
+                  <select
+                    value={t.status}
+                    onChange={(e) =>
+                      void setInboxStatus("tickets", t.id, e.target.value)
+                    }
+                  >
+                    {[
+                      "open",
+                      "in_progress",
+                      "waiting_customer",
+                      "resolved",
+                      "closed",
+                    ].map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
                     ))}
                   </select>
                 </div>

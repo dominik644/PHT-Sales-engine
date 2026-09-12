@@ -48,6 +48,33 @@ type Me = {
   companyStatus: string;
 };
 
+type QuoteRow = {
+  id: string;
+  number: string;
+  status: string;
+  note: string;
+  offeredTotalCents: number | null;
+  offeredNote: string;
+  validUntil: string | null;
+  createdAt: string;
+  items: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    quantity: number;
+    unitCents: number | null;
+  }>;
+};
+
+type TicketRow = {
+  id: string;
+  number: string;
+  type: string;
+  subject: string;
+  status: string;
+  createdAt: string;
+};
+
 const statusLabel: Record<string, string> = {
   awaiting_production_approval: "Wartet auf Produktionsleiter",
   awaiting_purchasing_approval: "Wartet auf Einkauf",
@@ -75,6 +102,8 @@ export default function AccountPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ephemeralDemo, setEphemeralDemo] = useState(false);
+  const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [tickets, setTickets] = useState<TicketRow[]>([]);
 
   const load = useCallback(async () => {
     const meRes = await fetch("/api/auth/me");
@@ -92,9 +121,11 @@ export default function AccountPage() {
 
     // Historie-Filter und Freigabe-Pipeline getrennt laden — sonst verschwinden
     // Einkaufs-Freigaben, sobald „Abgeschlossen“ aktiv ist.
-    const [ordersRes, pipelineRes] = await Promise.all([
+    const [ordersRes, pipelineRes, quotesRes, ticketsRes] = await Promise.all([
       fetch(`/api/account/orders?${params.toString()}`),
       fetch("/api/account/orders?status=open"),
+      fetch("/api/quotes"),
+      fetch("/api/tickets"),
     ]);
     if (ordersRes.ok) {
       const data = (await ordersRes.json()) as {
@@ -107,6 +138,14 @@ export default function AccountPage() {
     if (pipelineRes.ok) {
       const data = (await pipelineRes.json()) as { orders: OrderRow[] };
       setPipeline(data.orders);
+    }
+    if (quotesRes.ok) {
+      const data = (await quotesRes.json()) as { quotes: QuoteRow[] };
+      setQuotes(data.quotes);
+    }
+    if (ticketsRes.ok) {
+      const data = (await ticketsRes.json()) as { tickets: TicketRow[] };
+      setTickets(data.tickets);
     }
   }, [filter, query]);
 
@@ -231,7 +270,16 @@ export default function AccountPage() {
         </div>
       ) : null}
 
-      
+      {me.role === "REQUESTER" ? (
+        <div className="panel" style={{ marginBottom: "1rem" }}>
+          <p>
+            Als <strong>Anforderer</strong> können Sie Angebote und Tickets
+            anlegen, aber keine verbindlichen Bestellungen auslösen. Bitte
+            Einkauf oder Firmen-Admin für die Annahme / den Checkout.
+          </p>
+        </div>
+      ) : null}
+
       {me?.role === "COMPANY_ADMIN" ? (
         <div className="panel" style={{ marginBottom: "1.25rem" }}>
           <h2>Nutzer einladen</h2>
@@ -279,6 +327,7 @@ export default function AccountPage() {
                 <option value="COMPANY_ADMIN">Firmen-Admin</option>
                 <option value="PURCHASING">Einkauf</option>
                 <option value="PRODUCTION_MANAGER">Produktionsleiter</option>
+                <option value="REQUESTER">Anforderer</option>
               </select>
             </label>
             <button type="submit" className="btn btn--primary">
@@ -325,6 +374,94 @@ export default function AccountPage() {
 
       {message ? <div className="success-banner">{message}</div> : null}
       {error ? <p className="form-error">{error}</p> : null}
+
+      {quotes.length > 0 ? (
+        <div className="panel" style={{ marginBottom: "1.25rem" }}>
+          <h2>Angebote ({quotes.length})</h2>
+          <div className="admin-table">
+            {quotes.map((q) => (
+              <div key={q.id} className="admin-row">
+                <div>
+                  <strong>{q.number}</strong>
+                  <p className="muted">
+                    {q.status}
+                    {q.offeredTotalCents != null
+                      ? ` · ${formatMoney(q.offeredTotalCents)}`
+                      : ""}
+                    {q.validUntil
+                      ? ` · gültig bis ${new Date(q.validUntil).toLocaleDateString("de-DE")}`
+                      : ""}
+                  </p>
+                  <p className="muted">
+                    {q.items
+                      .map((i) => `${i.name} × ${i.quantity}`)
+                      .join(", ")}
+                  </p>
+                  {q.offeredNote ? (
+                    <p className="muted">{q.offeredNote}</p>
+                  ) : null}
+                </div>
+                <div className="admin-row__meta">
+                  <span className="pill">{q.status}</span>
+                  {q.status === "offered" && me.role !== "REQUESTER" ? (
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      onClick={async () => {
+                        setError(null);
+                        setMessage(null);
+                        const res = await fetch(`/api/quotes/${q.id}/accept`, {
+                          method: "POST",
+                        });
+                        const data = (await res.json()) as {
+                          error?: string;
+                          order?: { number: string };
+                        };
+                        if (!res.ok) {
+                          setError(data.error ?? "Annahme fehlgeschlagen");
+                          return;
+                        }
+                        setMessage(
+                          `Angebot angenommen → Auftrag ${data.order?.number ?? ""}`,
+                        );
+                        await load();
+                      }}
+                    >
+                      Angebot annehmen
+                    </button>
+                  ) : null}
+                  {q.status === "offered" && me.role === "REQUESTER" ? (
+                    <span className="muted">Nur Einkauf/Admin</span>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {tickets.length > 0 ? (
+        <div className="panel" style={{ marginBottom: "1.25rem" }}>
+          <h2>Support-Tickets ({tickets.length})</h2>
+          <p className="muted">
+            Neue Tickets unter{" "}
+            <Link href="/retouren">Retouren / Service</Link>.
+          </p>
+          <div className="admin-table">
+            {tickets.map((t) => (
+              <div key={t.id} className="admin-row">
+                <div>
+                  <strong>{t.number}</strong>
+                  <p className="muted">
+                    {t.type} · {t.subject}
+                  </p>
+                </div>
+                <span className="pill">{t.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {pendingApprovals.length > 0 ? (
         <div className="panel" style={{ marginBottom: "1.25rem" }}>

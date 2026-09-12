@@ -39,7 +39,7 @@ export const registerCompanySchema = z.object({
   adminEmail: z.string().trim().email().max(200),
   password: z.string().min(8).max(200),
   role: z
-    .enum(["COMPANY_ADMIN", "PURCHASING", "PRODUCTION_MANAGER"])
+    .enum(["COMPANY_ADMIN", "PURCHASING", "PRODUCTION_MANAGER", "REQUESTER"])
     .default("COMPANY_ADMIN"),
 });
 
@@ -52,7 +52,12 @@ export const inviteUserSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email(),
   password: z.string().min(8).max(200),
-  role: z.enum(["COMPANY_ADMIN", "PURCHASING", "PRODUCTION_MANAGER"]),
+  role: z.enum([
+    "COMPANY_ADMIN",
+    "PURCHASING",
+    "PRODUCTION_MANAGER",
+    "REQUESTER",
+  ]),
 });
 
 export const discountSchema = z.object({

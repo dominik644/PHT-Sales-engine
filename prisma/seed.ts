@@ -352,6 +352,7 @@ const products: SeedProduct[] = [
 ];
 
 async function main() {
+  await prisma.supportTicket.deleteMany({});
   await prisma.quoteRequestItem.deleteMany({});
   await prisma.quoteRequest.deleteMany({});
   await prisma.serviceRequest.deleteMany({});
@@ -536,10 +537,16 @@ async function main() {
       name: "Clara Admin",
       role: "COMPANY_ADMIN",
     },
+    {
+      email: "anforderer@mueller-fertigung.example",
+      name: "Dana Anforderer",
+      role: "REQUESTER",
+    },
   ];
 
+  const createdUsers: Record<string, { id: string; email: string }> = {};
   for (const u of users) {
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         email: u.email,
         name: u.name,
@@ -549,6 +556,7 @@ async function main() {
         active: true,
       },
     });
+    createdUsers[u.role] = { id: created.id, email: created.email };
   }
 
   const from = new Date();
@@ -770,7 +778,57 @@ async function main() {
   });
   console.log("Pending company:", pendingCompany.name);
 
-console.log("Discount code: PHT-B2B-10 (10%, 90 days)");
+  const sampleProduct = await prisma.product.findFirst({
+    where: { active: true },
+    orderBy: { name: "asc" },
+  });
+  if (sampleProduct && createdUsers.PURCHASING) {
+    await prisma.quoteRequest.create({
+      data: {
+        number: "AN-SEED-OFFERED-001",
+        companyId: company.id,
+        requesterId: createdUsers.PURCHASING.id,
+        status: "offered",
+        note: "Demo-Angebot zur Annahme im Kundenkonto",
+        offeredTotalCents: sampleProduct.priceCents * 2,
+        offeredNote: "Gültig 30 Tage · Demo",
+        offeredAt: new Date(),
+        validUntil: new Date(Date.now() + 30 * 86400000),
+        items: {
+          create: [
+            {
+              productId: sampleProduct.id,
+              sku: sampleProduct.sku,
+              name: sampleProduct.name,
+              quantity: 2,
+              unitCents: sampleProduct.priceCents,
+              note: "",
+            },
+          ],
+        },
+      },
+    });
+    console.log("Seed quote: AN-SEED-OFFERED-001 (offered)");
+  }
+
+  if (createdUsers.REQUESTER) {
+    await prisma.supportTicket.create({
+      data: {
+        number: "TK-SEED-OPEN-001",
+        companyId: company.id,
+        requesterId: createdUsers.REQUESTER.id,
+        type: "return",
+        subject: "Demo-Retoure Sensorik",
+        message:
+          "Bitte Rückholung eines Demogeräts koordinieren. Seed-Ticket zur Admin-Inbox.",
+        status: "open",
+      },
+    });
+    console.log("Seed ticket: TK-SEED-OPEN-001 (open)");
+  }
+
+  console.log("Users: produktion / einkauf / admin / anforderer @mueller-fertigung.example");
+  console.log("Discount code: PHT-B2B-10 (10%, 90 days)");
 }
 
 main()

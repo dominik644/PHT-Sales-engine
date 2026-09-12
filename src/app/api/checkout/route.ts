@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { checkoutSchema } from "@/lib/validation";
 import { enforceRateLimit, hashIp } from "@/lib/security";
 import { requireActiveB2BUser } from "@/lib/b2b-auth";
+import { canPlaceOrders } from "@/lib/order-permissions";
 import { resolveDiscount } from "@/lib/discounts";
 import { resolveUnitPrice } from "@/lib/pricing";
 import { listShippingOptions } from "@/lib/shipping";
@@ -38,6 +39,16 @@ export async function POST(request: Request) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
     "unknown";
+
+  if (!canPlaceOrders(session.role)) {
+    return NextResponse.json(
+      {
+        error:
+          "Als Anforderer können Sie keine verbindlichen Bestellungen auslösen. Bitte Einkauf oder Firmen-Admin kontaktieren.",
+      },
+      { status: 403 },
+    );
+  }
 
   const limited = await enforceRateLimit(`checkout:${session.id}`, 15, 60_000);
   if (!limited.ok) {
