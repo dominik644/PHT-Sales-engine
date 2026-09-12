@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getSessionUser } from "@/lib/b2b-auth";
+import { getFreshSessionUser } from "@/lib/b2b-auth";
 import { canApprove } from "@/lib/approvals";
 
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const user = await getSessionUser();
+  const user = await getFreshSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

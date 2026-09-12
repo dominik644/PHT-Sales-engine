@@ -151,6 +151,10 @@ export default function CheckoutPage() {
       setError("Bitte Versandart wählen.");
       return;
     }
+    if (items.some((item) => item.product.priceCents == null)) {
+      setError("Warenkorb enthält Positionen ohne Preis. Bitte neu anmelden und Artikel erneut hinzufügen.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -454,7 +458,7 @@ export default function CheckoutPage() {
                 <span>
                   {product.name} × {quantity}
                 </span>
-                <span>{formatMoney(product.priceCents * quantity)}</span>
+                <span>{(product.priceCents == null ? "—" : formatMoney(product.priceCents * quantity))}</span>
               </div>
             ))}
             <div className="summary-line">

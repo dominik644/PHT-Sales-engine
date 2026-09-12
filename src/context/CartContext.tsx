@@ -13,8 +13,10 @@ import {
 export type CartProductSnapshot = {
   id: string;
   slug: string;
+  sku?: string;
   name: string;
-  priceCents: number;
+  /** null = Preis nach Login / unbekannt */
+  priceCents: number | null;
   image: string;
   minOrderQty?: number;
 };
@@ -69,6 +71,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const toggleCart = useCallback(() => setIsOpen((v) => !v), []);
 
   const addItem = useCallback((product: CartProductSnapshot, quantity = 1) => {
+    // Keine Listpreise ohne Login in den Warenkorb übernehmen
+    if (product.priceCents == null) return;
     const minQty = Math.max(1, product.minOrderQty ?? 1);
     setItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
@@ -122,7 +126,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const subtotalCents = useMemo(
     () =>
       items.reduce(
-        (sum, item) => sum + item.product.priceCents * item.quantity,
+        (sum, item) =>
+          sum + (item.product.priceCents ?? 0) * item.quantity,
         0,
       ),
     [items],

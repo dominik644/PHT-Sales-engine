@@ -296,6 +296,13 @@ export async function POST(request: Request) {
     );
   }
 
+  const nextStep =
+    order.status === "awaiting_purchasing_approval"
+      ? "Nächster Schritt: Freigabe durch Einkauf (Produktionsschwelle unterschritten)."
+      : "Nächster Schritt: Freigabe durch Produktionsleiter, danach Einkauf.";
+  const erpHint =
+    " Erst dann erstellt das ERP Auftrag und Rechnung.";
+
   return NextResponse.json({
     ok: true,
     order: {
@@ -314,8 +321,8 @@ export async function POST(request: Request) {
       partialStock: partialMessages,
       message:
         partialMessages.length > 0
-          ? `Auftrag eingereicht mit Teillieferung (${partialMessages.join("; ")}). Nächster Schritt: Freigabe durch Produktionsleiter, danach Einkauf.`
-          : "Auftrag eingereicht. Nächster Schritt: Freigabe durch Produktionsleiter, danach Einkauf. Erst dann erstellt das ERP Auftrag und Rechnung.",
+          ? `Auftrag eingereicht mit Teillieferung (${partialMessages.join("; ")}). ${nextStep}`
+          : `Auftrag eingereicht. ${nextStep}${erpHint}`,
     },
   });
 }

@@ -10,7 +10,7 @@ type LookupProduct = {
   slug: string;
   sku: string;
   name: string;
-  priceCents: number;
+  priceCents: number | null;
   image: string;
   minOrderQty: number;
 };
@@ -105,13 +105,19 @@ export default function SchnellbestellungPage() {
           continue;
         }
         const qty = Math.max(row.quantity, data.product.minOrderQty || 1);
+        if (data.product.priceCents == null) {
+          setError("Bitte anmelden, um Preise und Bestellungen zu nutzen.");
+          return;
+        }
         addItem(
           {
             id: data.product.id,
             slug: data.product.slug,
+            sku: data.product.sku,
             name: data.product.name,
             priceCents: data.product.priceCents,
             image: data.product.image,
+            minOrderQty: data.product.minOrderQty,
           },
           qty,
         );

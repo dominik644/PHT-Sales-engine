@@ -54,16 +54,23 @@ export function ProductCard({
             {showPrice ? formatNet(product.priceCents) : "Preis nach Login"}
           </p>
           {product.stock > 0 ? (
-            <QuickAddButton
-              product={{
-                id: product.id,
-                slug: product.slug,
-                name: product.name,
-                priceCents: product.priceCents,
-                image: product.image,
-                minOrderQty: product.minOrderQty,
-              }}
-            />
+            showPrice ? (
+              <QuickAddButton
+                product={{
+                  id: product.id,
+                  slug: product.slug,
+                  sku: product.sku,
+                  name: product.name,
+                  priceCents: product.priceCents,
+                  image: product.image,
+                  minOrderQty: product.minOrderQty,
+                }}
+              />
+            ) : (
+              <Link href="/login" className="btn btn--ink btn--sm">
+                Anmelden
+              </Link>
+            )
           ) : (
             <span className="stock-badge stock-badge--out">Nicht lieferbar</span>
           )}

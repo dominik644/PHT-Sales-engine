@@ -53,7 +53,7 @@ export default function CartPage() {
                 </div>
                 <div className="cart-table__info">
                   <Link href={`/product/${product.slug}`}>{product.name}</Link>
-                  <p className="muted">{formatMoney(product.priceCents)} / Stück</p>
+                  <p className="muted">{product.priceCents == null ? "—" : formatMoney(product.priceCents)} / Stück</p>
                 </div>
                 <div className="qty">
                   <button
@@ -72,7 +72,7 @@ export default function CartPage() {
                     +
                   </button>
                 </div>
-                <strong>{formatMoney(product.priceCents * quantity)}</strong>
+                <strong>{(product.priceCents == null ? "—" : formatMoney(product.priceCents * quantity))}</strong>
                 <button
                   type="button"
                   className="text-btn"

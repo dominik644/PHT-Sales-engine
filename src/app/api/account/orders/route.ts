@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getSessionUser, requireActiveB2BUser } from "@/lib/b2b-auth";
+import { getFreshSessionUser, requireActiveB2BUser } from "@/lib/b2b-auth";
 import { approvalSchema } from "@/lib/validation";
 import { approveOrder, canApprove, rejectOrder } from "@/lib/approvals";
 
@@ -90,7 +90,7 @@ async function loadOrders(companyId: string) {
 }
 
 export async function GET(request: Request) {
-  const user = await getSessionUser();
+  const user = await getFreshSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

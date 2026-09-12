@@ -76,8 +76,23 @@ export async function approveOrder(options: {
   });
 
   if (next === "approved") {
-    // Nach finaler Einkaufsfreigabe: Auftrag + Rechnung im ERP anlegen
-    await pushOrderAndInvoiceToErp(order.id);
+    // Freigabe ist verbindlich — ERP-Fehler dürfen die API nicht als
+    // fehlgeschlagene Freigabe zurückgeben (Retry über Admin möglich).
+    try {
+      await pushOrderAndInvoiceToErp(order.id);
+      return prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Unbekannter ERP-Fehler";
+      await prisma.orderEvent.create({
+        data: {
+          orderId: order.id,
+          type: "erp_failed_after_approval",
+          message: `Freigabe ok, ERP-Sync fehlgeschlagen: ${detail}`,
+        },
+      });
+      return prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    }
   }
 
   return updated;
