@@ -1,10 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { StoreProduct } from "@/lib/catalog";
-import { formatMoney } from "@/lib/money";
+import { formatNet } from "@/lib/pricing-display";
 import { QuickAddButton } from "@/components/QuickAddButton";
 
-export function ProductCard({ product }: { product: StoreProduct }) {
+export function ProductCard({
+  product,
+  showPrice = false,
+}: {
+  product: StoreProduct;
+  showPrice?: boolean;
+}) {
   return (
     <article className="product-tile">
       <Link href={`/product/${product.slug}`} className="product-tile__media-link">
@@ -44,7 +50,9 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           </p>
         ) : null}
         <div className="product-tile__buy">
-          <p className="price">{formatMoney(product.priceCents)}</p>
+          <p className="price">
+            {showPrice ? formatNet(product.priceCents) : "Preis nach Login"}
+          </p>
           {product.stock > 0 ? (
             <QuickAddButton
               product={{
@@ -53,6 +61,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
                 name: product.name,
                 priceCents: product.priceCents,
                 image: product.image,
+                minOrderQty: product.minOrderQty,
               }}
             />
           ) : (

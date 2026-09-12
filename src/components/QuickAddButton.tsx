@@ -10,7 +10,7 @@ export function QuickAddButton({ product }: { product: CartProductSnapshot }) {
       type="button"
       className="btn btn--primary btn--sm"
       onClick={() => {
-        addItem(product, 1);
+        addItem(product, Math.max(1, product.minOrderQty ?? 1));
         openCart();
       }}
     >

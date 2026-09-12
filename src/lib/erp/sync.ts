@@ -27,10 +27,14 @@ export async function syncProductsFromErp() {
         category: p.category,
         tagline: p.tagline,
         description: p.description,
+        purpose: (p as { purpose?: string }).purpose ?? "",
+        manufacturerSku: (p as { manufacturerSku?: string | null }).manufacturerSku ?? null,
         priceCents: p.priceCents,
         currency: p.currency,
+        vatRateBps: (p as { vatRateBps?: number }).vatRateBps ?? 1900,
         imageUrl: p.imageUrl,
         stock: p.stock,
+        minOrderQty: (p as { minOrderQty?: number }).minOrderQty ?? 1,
         active: p.active,
       },
       update: {
@@ -39,11 +43,18 @@ export async function syncProductsFromErp() {
         category: p.category,
         tagline: p.tagline,
         description: p.description,
+        // purpose/manufacturerSku/minOrderQty bleiben lokal, falls ERP sie nicht liefert
         priceCents: p.priceCents,
         currency: p.currency,
         imageUrl: p.imageUrl,
         stock: p.stock,
         active: p.active,
+        ...(((p as { vatRateBps?: number }).vatRateBps != null)
+          ? { vatRateBps: (p as { vatRateBps?: number }).vatRateBps }
+          : {}),
+        ...(((p as { manufacturerSku?: string | null }).manufacturerSku != null)
+          ? { manufacturerSku: (p as { manufacturerSku?: string | null }).manufacturerSku }
+          : {}),
       },
     });
     upserted += 1;

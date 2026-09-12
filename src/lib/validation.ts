@@ -7,6 +7,9 @@ export const checkoutSchema = z.object({
   country: z.string().trim().length(2).default("DE"),
   discountCode: z.string().trim().max(40).optional().nullable(),
   paymentTermId: z.string().min(1),
+  shippingMethodCode: z.string().trim().min(1).max(40),
+  montageRequested: z.boolean().optional().default(false),
+  montageNote: z.string().trim().max(1000).optional().nullable(),
   items: z
     .array(
       z.object({

@@ -42,6 +42,7 @@ type Stats = {
 
 type Me = {
   name: string;
+  role: string;
   roleLabel: string;
   companyName: string;
   companyStatus: string;
@@ -159,6 +160,12 @@ export default function AccountPage() {
           <Link href="/shop" className="btn btn--primary">
             Zum Shop
           </Link>
+          <Link href="/dokumente" className="btn btn--ink">
+            Dokumente
+          </Link>
+          <Link href="/anlagen" className="btn btn--ink">
+            Anlagen
+          </Link>
           <button type="button" className="btn btn--ink" onClick={logout}>
             Abmelden
           </button>
@@ -171,6 +178,63 @@ export default function AccountPage() {
             Ihre Firma ist <strong>{me.companyStatus}</strong>. PHT muss den
             Zugang freischalten, bevor Bestellungen möglich sind.
           </p>
+        </div>
+      ) : null}
+
+      
+      {me?.role === "COMPANY_ADMIN" ? (
+        <div className="panel" style={{ marginBottom: "1.25rem" }}>
+          <h2>Nutzer einladen</h2>
+          <form
+            className="form-grid"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setError(null);
+              setMessage(null);
+              const fd = new FormData(e.currentTarget);
+              const res = await fetch("/api/account/users", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name: String(fd.get("name") ?? ""),
+                  email: String(fd.get("email") ?? ""),
+                  password: String(fd.get("password") ?? ""),
+                  role: String(fd.get("role") ?? "PURCHASING"),
+                }),
+              });
+              const data = (await res.json()) as { error?: string };
+              if (!res.ok) {
+                setError(data.error ?? "Einladung fehlgeschlagen");
+                return;
+              }
+              setMessage("Nutzer angelegt");
+              e.currentTarget.reset();
+            }}
+          >
+            <label>
+              Name
+              <input name="name" required minLength={2} />
+            </label>
+            <label>
+              E-Mail
+              <input name="email" type="email" required />
+            </label>
+            <label>
+              Initialpasswort
+              <input name="password" type="password" required minLength={8} />
+            </label>
+            <label>
+              Rolle
+              <select name="role" defaultValue="PURCHASING">
+                <option value="COMPANY_ADMIN">Firmen-Admin</option>
+                <option value="PURCHASING">Einkauf</option>
+                <option value="PRODUCTION_MANAGER">Produktionsleiter</option>
+              </select>
+            </label>
+            <button type="submit" className="btn btn--primary">
+              Nutzer anlegen
+            </button>
+          </form>
         </div>
       ) : null}
 

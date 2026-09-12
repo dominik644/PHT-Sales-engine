@@ -2,13 +2,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { StoreHero } from "@/components/StoreHero";
+import { getSessionUser } from "@/lib/b2b-auth";
 import { listActiveProducts } from "@/lib/catalog";
+import { applyCompanyListPrices } from "@/lib/pricing";
 import { PHT_PILLARS, PHT_SERVICE } from "@/lib/taxonomy";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const products = await listActiveProducts({ sort: "name" });
+  const [productsRaw, session] = await Promise.all([
+    listActiveProducts({ sort: "name" }),
+    getSessionUser(),
+  ]);
+  const showPrice = Boolean(session);
+  const companyId =
+    session?.companyStatus === "active" ? session.companyId : null;
+  const products =
+    showPrice && companyId
+      ? await applyCompanyListPrices(productsRaw, companyId)
+      : productsRaw;
   const featured = products.slice(0, 4);
 
   return (
@@ -94,7 +106,11 @@ export default async function HomePage() {
         </div>
         <div className="product-grid">
           {featured.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              showPrice={showPrice}
+            />
           ))}
         </div>
       </section>

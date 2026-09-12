@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
 import { DemoBanner } from "@/components/DemoBanner";
+import { CookieConsent } from "@/components/CookieConsent";
 import "./globals.css";
 
 const display = Roboto_Slab({
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="page-main">{children}</main>
           <Footer />
           <CartDrawer />
+          <CookieConsent />
         </CartProvider>
       </body>
     </html>

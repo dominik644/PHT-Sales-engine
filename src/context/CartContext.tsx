@@ -16,6 +16,7 @@ export type CartProductSnapshot = {
   name: string;
   priceCents: number;
   image: string;
+  minOrderQty?: number;
 };
 
 export type CartItem = {
@@ -68,16 +69,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const toggleCart = useCallback(() => setIsOpen((v) => !v), []);
 
   const addItem = useCallback((product: CartProductSnapshot, quantity = 1) => {
+    const minQty = Math.max(1, product.minOrderQty ?? 1);
     setItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
         return prev.map((item) =>
           item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? {
+                ...item,
+                product: { ...item.product, ...product, minOrderQty: minQty },
+                quantity: Math.max(minQty, item.quantity + quantity),
+              }
             : item,
         );
       }
-      return [...prev, { product, quantity }];
+      return [
+        ...prev,
+        {
+          product: { ...product, minOrderQty: minQty },
+          quantity: Math.max(minQty, quantity),
+        },
+      ];
     });
     setIsOpen(true);
   }, []);
@@ -92,9 +104,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     setItems((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item,
-      ),
+      prev.map((item) => {
+        if (item.product.id !== productId) return item;
+        const minQty = Math.max(1, item.product.minOrderQty ?? 1);
+        return { ...item, quantity: Math.max(minQty, quantity) };
+      }),
     );
   }, []);
 
