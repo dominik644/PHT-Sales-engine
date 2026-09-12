@@ -1,6 +1,5 @@
 generator client {
   provider      = "prisma-client-js"
-  // native = local/dev; rhel = Vercel serverless
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -10,83 +9,156 @@ datasource db {
 }
 
 model Product {
-  id          String             @id @default(cuid())
-  erpId       String?            @unique
-  sku         String             @unique
-  slug        String             @unique
-  name        String
-  category    String
-  tagline     String
-  description String
-  priceCents  Int
-  currency    String             @default("EUR")
-  imageUrl    String
-  accent      String             @default("#1F4B3A")
-  stock       Int                @default(0)
-  active      Boolean            @default(true)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  lineItems   OrderItem[]
-  datasheets  ProductDatasheet[]
+  id                     String              @id @default(cuid())
+  erpId                  String?             @unique
+  sku                    String              @unique
+  /// Optionale Herstellernummer für Suche
+  manufacturerSku        String?
+  slug                   String              @unique
+  name                   String
+  category               String
+  tagline                String
+  description            String
+  /// Verwendungszweck
+  purpose                String             @default("")
+  /// Listenpreis (Netto) in Cent — kundenspezifisch ggf. über PriceGroup
+  priceCents             Int
+  currency               String              @default("EUR")
+  vatRateBps             Int                 @default(1900)
+  imageUrl               String
+  accent                 String              @default("#17417D")
+  stock                  Int                 @default(0)
+  minOrderQty            Int                 @default(1)
+  lengthMm               Float?
+  widthMm                Float?
+  heightMm               Float?
+  weightKg               Float?
+  deliveryDaysInStock    Int                 @default(3)
+  deliveryDaysOutOfStock Int                 @default(14)
+  active                 Boolean             @default(true)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  lineItems              OrderItem[]
+  datasheets             ProductDatasheet[]
+  images                 ProductImage[]
+  priceTiers             PriceTier[]
+  spareFor               ProductSparePart[]  @relation("MachineParts")
+  usedAsSpare            ProductSparePart[]  @relation("SpareParts")
+  quoteItems             QuoteRequestItem[]
+  serviceRequests        ServiceRequest[]
 }
 
-/// PHT-definierte Zahlungsbedingungen (Vorauskasse, 50/50, …)
-model PaymentTerm {
-  id              String    @id @default(cuid())
-  code            String    @unique
-  name            String
-  description     String
-  /// Anteil bei Auftragserteilung in %
-  depositPercent  Int       @default(100)
-  /// Restanteil in %
-  balancePercent  Int       @default(0)
-  /// Rest fällig nach X Tagen (0 = bei Lieferung / sofort)
-  balanceDueDays  Int       @default(0)
-  active          Boolean   @default(true)
-  sortOrder       Int       @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  companies       Company[]
-  orders          Order[]
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String  @default("")
+  sortOrder Int     @default(0)
 }
 
-/// Technische Datenblätter zum Download
+model ProductSparePart {
+  id               String  @id @default(cuid())
+  machineProductId String
+  machineProduct   Product @relation("MachineParts", fields: [machineProductId], references: [id], onDelete: Cascade)
+  spareProductId   String
+  spareProduct     Product @relation("SpareParts", fields: [spareProductId], references: [id], onDelete: Cascade)
+  qtyPerUnit       Int     @default(1)
+  note             String  @default("")
+
+  @@unique([machineProductId, spareProductId])
+}
+
+model PriceGroup {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  /// Prozent-Nachlass auf Listenpreis (Demo-Ersatz für BC Price Group)
+  percentOff Float    @default(0)
+  companies Company[]
+  createdAt DateTime  @default(now())
+}
+
+model PriceTier {
+  id         String  @id @default(cuid())
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qtyFrom    Int
+  unitCents  Int
+
+  @@unique([productId, qtyFrom])
+}
+
 model ProductDatasheet {
   id        String   @id @default(cuid())
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   title     String
   fileName  String
-  /// Relativer Pfad unter /public, z. B. datasheets/arc.pdf
   filePath  String
   mimeType  String   @default("application/pdf")
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 }
 
-/// B2B Kundenfirma
-model Company {
-  id                   String       @id @default(cuid())
-  name                 String
-  vatId                String?
-  billingEmail         String
-  addressLine1         String
-  city                 String
-  postalCode           String
-  country              String       @default("DE")
-  /// pending | active | suspended
-  status               String       @default("pending")
-  erpCustomerId        String?
-  defaultPaymentTermId String?
-  defaultPaymentTerm   PaymentTerm? @relation(fields: [defaultPaymentTermId], references: [id])
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  users                User[]
-  orders               Order[]
-  discounts            Discount[]
+model PaymentTerm {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  name           String
+  description    String
+  depositPercent Int       @default(100)
+  balancePercent Int       @default(0)
+  balanceDueDays Int       @default(0)
+  active         Boolean   @default(true)
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  companies      Company[]
+  orders         Order[]
 }
 
-/// B2B Nutzer mit Freigabe-Rolle
+model ShippingMethod {
+  id             String  @id @default(cuid())
+  code           String  @unique
+  name           String
+  description    String  @default("")
+  baseCents      Int
+  freeAboveCents Int?
+  allowsPickup   Boolean @default(false)
+  active         Boolean @default(true)
+  sortOrder      Int     @default(0)
+}
+
+model Company {
+  id                    String             @id @default(cuid())
+  name                  String
+  vatId                 String?
+  billingEmail          String
+  addressLine1          String
+  city                  String
+  postalCode            String
+  country               String             @default("DE")
+  /// pending | active | suspended
+  status                String             @default("pending")
+  erpCustomerId         String?
+  defaultPaymentTermId  String?
+  defaultPaymentTerm    PaymentTerm?       @relation(fields: [defaultPaymentTermId], references: [id])
+  priceGroupId          String?
+  priceGroup            PriceGroup?        @relation(fields: [priceGroupId], references: [id])
+  /// Neue Kunden bis Bonitätsfreigabe
+  requiresPrepaid       Boolean            @default(true)
+  approvalThresholdCents Int?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  users                 User[]
+  orders                Order[]
+  discounts             Discount[]
+  quoteRequests         QuoteRequest[]
+  serviceRequests       ServiceRequest[]
+  documents             CustomerDocument[]
+  assets                CustomerAsset[]
+}
+
 model User {
   id           String          @id @default(cuid())
   companyId    String
@@ -94,20 +166,20 @@ model User {
   email        String          @unique
   name         String
   passwordHash String
-  /// PRODUCTION_MANAGER | PURCHASING | COMPANY_ADMIN
+  /// PRODUCTION_MANAGER | PURCHASING | COMPANY_ADMIN | REQUESTER
   role         String
   active       Boolean         @default(true)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   ordersPlaced Order[]         @relation("OrderRequester")
   approvals    OrderApproval[]
+  quoteRequests QuoteRequest[] @relation("QuoteRequester")
 }
 
 model Discount {
   id               String    @id @default(cuid())
   code             String    @unique
   name             String
-  /// percent | fixed
   type             String
   percentOff       Float?
   amountOffCents   Int?
@@ -115,7 +187,6 @@ model Discount {
   validFrom        DateTime
   validTo          DateTime
   active           Boolean   @default(true)
-  /// null = gilt für alle aktiven Firmen
   companyId        String?
   company          Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt        DateTime  @default(now())
@@ -124,56 +195,64 @@ model Discount {
 }
 
 model Order {
-  id                 String          @id @default(cuid())
-  number             String          @unique
-  /// draft | awaiting_production_approval | awaiting_purchasing_approval | approved | confirmed | rejected | cancelled
-  status             String          @default("awaiting_production_approval")
-  companyId          String?
-  company            Company?        @relation(fields: [companyId], references: [id])
-  requesterId        String?
-  requester          User?           @relation("OrderRequester", fields: [requesterId], references: [id])
-  email              String
-  name               String
-  addressLine1       String
-  city               String
-  postalCode         String
-  country            String          @default("DE")
-  subtotalCents      Int
-  discountCents      Int             @default(0)
-  totalCents         Int
-  currency           String          @default("EUR")
-  discountId         String?
-  discount           Discount?       @relation(fields: [discountId], references: [id])
-  discountCode       String?
-  paymentTermId      String?
-  paymentTerm        PaymentTerm?    @relation(fields: [paymentTermId], references: [id])
-  paymentTermLabel   String?
+  id                  String          @id @default(cuid())
+  number              String          @unique
+  status              String          @default("awaiting_production_approval")
+  companyId           String?
+  company             Company?        @relation(fields: [companyId], references: [id])
+  requesterId         String?
+  requester           User?           @relation("OrderRequester", fields: [requesterId], references: [id])
+  email               String
+  name                String
+  addressLine1        String
+  city                String
+  postalCode          String
+  country             String          @default("DE")
+  subtotalCents       Int
+  discountCents       Int             @default(0)
+  shippingCents       Int             @default(0)
+  totalCents          Int
+  currency            String          @default("EUR")
+  discountId          String?
+  discount            Discount?       @relation(fields: [discountId], references: [id])
+  discountCode        String?
+  paymentTermId       String?
+  paymentTerm         PaymentTerm?    @relation(fields: [paymentTermId], references: [id])
+  paymentTermLabel    String?
   paymentTermSnapshot String?
-  /// pending | synced | failed | skipped
-  erpSyncStatus      String          @default("pending")
-  erpOrderId         String?
-  erpInvoiceId       String?
-  erpLastError       String?
-  ipHash             String?
-  userAgent          String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  items              OrderItem[]
-  events             OrderEvent[]
-  approvals          OrderApproval[]
-  invoice            Invoice?
+  shippingMethodCode  String?
+  shippingMethodLabel String?
+  montageRequested    Boolean         @default(false)
+  montageNote         String?
+  erpSyncStatus       String          @default("pending")
+  erpOrderId          String?
+  erpInvoiceId        String?
+  erpLastError        String?
+  ipHash              String?
+  userAgent           String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  items               OrderItem[]
+  events              OrderEvent[]
+  approvals           OrderApproval[]
+  invoice             Invoice?
+  serviceRequests     ServiceRequest[]
+  documents           CustomerDocument[]
 }
 
 model OrderItem {
-  id         String  @id @default(cuid())
-  orderId    String
-  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId  String
-  product    Product @relation(fields: [productId], references: [id])
-  sku        String
-  name       String
-  unitCents  Int
-  quantity   Int
+  id              String  @id @default(cuid())
+  orderId         String
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+  sku             String
+  name            String
+  unitCents       Int
+  quantity        Int
+  stockAtOrder    Int     @default(0)
+  availableNowQty Int     @default(0)
+  backorderQty    Int     @default(0)
 }
 
 model OrderEvent {
@@ -186,32 +265,101 @@ model OrderEvent {
 }
 
 model OrderApproval {
-  id         String   @id @default(cuid())
-  orderId    String
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  /// PRODUCTION_MANAGER | PURCHASING
-  role       String
-  /// approved | rejected
-  decision   String
-  note       String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String
+  decision  String
+  note      String?
+  createdAt DateTime @default(now())
 }
 
-/// Vom ERP erstellte Rechnung
 model Invoice {
-  id            String   @id @default(cuid())
-  orderId       String   @unique
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  number        String   @unique
-  erpInvoiceId  String   @unique
-  amountCents   Int
-  currency      String   @default("EUR")
-  /// open | paid | void
-  status        String   @default("open")
-  issuedAt      DateTime @default(now())
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  orderId      String   @unique
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  number       String   @unique
+  erpInvoiceId String   @unique
+  amountCents  Int
+  currency     String   @default("EUR")
+  status       String   @default("open")
+  issuedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model QuoteRequest {
+  id          String             @id @default(cuid())
+  number      String             @unique
+  companyId   String
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requesterId String?
+  requester   User?              @relation("QuoteRequester", fields: [requesterId], references: [id])
+  /// open | in_progress | offered | accepted | rejected | expired
+  status      String             @default("open")
+  note        String             @default("")
+  validUntil  DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  items       QuoteRequestItem[]
+}
+
+model QuoteRequestItem {
+  id             String       @id @default(cuid())
+  quoteRequestId String
+  quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?     @relation(fields: [productId], references: [id])
+  sku            String
+  name           String
+  quantity       Int
+  note           String       @default("")
+}
+
+model ServiceRequest {
+  id            String    @id @default(cuid())
+  number        String    @unique
+  companyId     String
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orderId       String?
+  order         Order?    @relation(fields: [orderId], references: [id])
+  productId     String?
+  product       Product?  @relation(fields: [productId], references: [id])
+  /// montage | wartung | service
+  type          String
+  preferredDate DateTime?
+  note          String    @default("")
+  /// open | confirmed | done | cancelled
+  status        String    @default("open")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model CustomerDocument {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id])
+  /// invoice | delivery | service | drawing | ce | other
+  type      String
+  title     String
+  filePath  String
+  erpDocId  String?
+  createdAt DateTime @default(now())
+}
+
+/// Kundenanlage für maschinenbezogene Ersatzteilsuche (Vorbereitung BC)
+model CustomerAsset {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  productId  String?
+  serial     String
+  name       String
+  installedAt DateTime?
+  createdAt  DateTime @default(now())
 }
 
 model ErpSyncLog {

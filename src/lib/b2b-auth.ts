@@ -93,11 +93,34 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   }
 }
 
-export async function requireActiveB2BUser(): Promise<SessionUser> {
+/**
+ * Session + live Firma/Nutzer-Status aus der DB (JWT-Status kann veraltet sein
+ * nach Admin-Freischaltung).
+ */
+export async function getFreshSessionUser(): Promise<SessionUser | null> {
   const user = await getSessionUser();
+  if (!user) return null;
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    include: { company: true },
+  });
+  if (!dbUser?.active) return null;
+
+  return {
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.name,
+    role: dbUser.role as UserRole,
+    companyId: dbUser.companyId,
+    companyName: dbUser.company.name,
+    companyStatus: dbUser.company.status,
+  };
+}
+
+export async function requireActiveB2BUser(): Promise<SessionUser> {
+  const user = await getFreshSessionUser();
   if (!user) throw new Error("UNAUTHORIZED");
   if (user.companyStatus !== "active") throw new Error("COMPANY_INACTIVE");
-  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-  if (!dbUser?.active) throw new Error("UNAUTHORIZED");
   return user;
 }

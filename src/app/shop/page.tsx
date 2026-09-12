@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
+import { getSessionUser } from "@/lib/b2b-auth";
 import { listActiveProducts, listCategories } from "@/lib/catalog";
+import { applyCompanyListPrices } from "@/lib/pricing";
 import { PHT_PILLARS, PHT_SERVICE } from "@/lib/taxonomy";
 
 export const metadata: Metadata = {
@@ -36,10 +38,18 @@ export default async function ShopPage({
   const sort =
     sp.sort === "price-asc" || sp.sort === "price-desc" ? sp.sort : "name";
 
+  const session = await getSessionUser();
+  const showPrice = Boolean(session);
+  const companyId =
+    session?.companyStatus === "active" ? session.companyId : null;
+
   let [products, categories] = await Promise.all([
     listActiveProducts({ q, category, sort }),
     listCategories(),
   ]);
+  if (showPrice && companyId) {
+    products = await applyCompanyListPrices(products, companyId);
+  }
 
   if (sub) {
     products = products.filter(
@@ -149,7 +159,11 @@ export default async function ShopPage({
         ) : (
           <div className="product-grid">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                showPrice={showPrice}
+              />
             ))}
           </div>
         )}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import { roleLabel } from "@/lib/role-labels";
+import { useCart } from "@/context/CartContext";
 
 type OrderDetail = {
   id: string;
@@ -28,11 +29,14 @@ type OrderDetail = {
   canApprove: boolean;
   requester: { name: string; email: string; role: string } | null;
   items: Array<{
+    productId: string;
     name: string;
     sku: string;
     quantity: number;
     unitCents: number;
     lineTotalCents: number;
+    availableNowQty?: number;
+    backorderQty?: number;
   }>;
   approvals: Array<{
     role: string;
@@ -62,8 +66,10 @@ const statusLabel: Record<string, string> = {
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
+  const { addItem } = useCart();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reorderMsg, setReorderMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!params.id) return;
@@ -97,6 +103,47 @@ export default function OrderDetailPage() {
     );
   }
 
+  async function reorder() {
+    if (!order) return;
+    setReorderMsg(null);
+    let added = 0;
+    for (const item of order.items) {
+      try {
+        const res = await fetch(
+          `/api/products?sku=${encodeURIComponent(item.sku)}`,
+        );
+        const data = (await res.json()) as {
+          product?: {
+            id: string;
+            slug: string;
+            name: string;
+            priceCents: number;
+            image: string;
+          };
+        };
+        if (!res.ok || !data.product) continue;
+        addItem(
+          {
+            id: data.product.id,
+            slug: data.product.slug,
+            name: data.product.name,
+            priceCents: data.product.priceCents,
+            image: data.product.image,
+          },
+          item.quantity,
+        );
+        added += 1;
+      } catch {
+        // skip
+      }
+    }
+    setReorderMsg(
+      added
+        ? `${added} Position(en) erneut in den Warenkorb gelegt.`
+        : "Keine Positionen konnten nachbestellt werden.",
+    );
+  }
+
   return (
     <div className="section">
       <header className="admin-header">
@@ -108,10 +155,20 @@ export default function OrderDetailPage() {
             {new Date(order.createdAt).toLocaleString("de-DE")}
           </p>
         </div>
-        <Link href="/account" className="btn btn--ink">
-          Zurück
-        </Link>
+        <div className="cta-row">
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => void reorder()}
+          >
+            Erneut bestellen
+          </button>
+          <Link href="/account" className="btn btn--ink">
+            Zurück
+          </Link>
+        </div>
       </header>
+      {reorderMsg ? <p className="muted">{reorderMsg}</p> : null}
 
       <section className="admin-grid">
         <div className="panel">
@@ -120,6 +177,9 @@ export default function OrderDetailPage() {
             <div key={item.sku + item.name} className="summary-line">
               <span>
                 {item.name} ({item.sku}) × {item.quantity}
+                {item.backorderQty && item.backorderQty > 0
+                  ? ` · ${item.availableNowQty ?? 0} sofort / ${item.backorderQty} Nachlieferung`
+                  : ""}
               </span>
               <span>{formatMoney(item.lineTotalCents)}</span>
             </div>

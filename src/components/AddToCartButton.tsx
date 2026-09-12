@@ -11,7 +11,8 @@ export function AddToCartButton({
   label?: string;
 }) {
   const { addItem, openCart } = useCart();
-  const [qty, setQty] = useState(1);
+  const minQty = Math.max(1, product.minOrderQty ?? 1);
+  const [qty, setQty] = useState(minQty);
 
   return (
     <div className="add-to-cart">
@@ -19,7 +20,7 @@ export function AddToCartButton({
         <button
           type="button"
           aria-label="Menge verringern"
-          onClick={() => setQty((q) => Math.max(1, q - 1))}
+          onClick={() => setQty((q) => Math.max(minQty, q - 1))}
         >
           −
         </button>

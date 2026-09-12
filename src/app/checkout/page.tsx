@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { formatMoney } from "@/lib/money";
 import { useCart } from "@/context/CartContext";
 
@@ -11,6 +11,9 @@ type FormState = {
   postal: string;
   discountCode: string;
   paymentTermId: string;
+  shippingMethodCode: string;
+  montageRequested: boolean;
+  montageNote: string;
 };
 
 type Me = {
@@ -18,6 +21,8 @@ type Me = {
   email: string;
   companyName: string;
   companyStatus: string;
+  requiresPrepaid?: boolean;
+  defaultPaymentTermId?: string | null;
 } | null;
 
 type PaymentTerm = {
@@ -30,17 +35,29 @@ type PaymentTerm = {
   balanceDueDays: number;
 };
 
+type ShippingMethod = {
+  code: string;
+  name: string;
+  description: string;
+  cents: number;
+  allowsPickup: boolean;
+};
+
 export default function CheckoutPage() {
   const { items, subtotalCents, clearCart, itemCount } = useCart();
   const [me, setMe] = useState<Me>(null);
   const [terms, setTerms] = useState<PaymentTerm[]>([]);
+  const [shipping, setShipping] = useState<ShippingMethod[]>([]);
   const [placed, setPlaced] = useState<{
     number: string;
     status: string;
     message?: string;
     totalCents: number;
     discountCents: number;
+    shippingCents?: number;
     paymentTermLabel?: string | null;
+    shippingMethodLabel?: string | null;
+    partialStock?: string[];
   } | null>(null);
   const [form, setForm] = useState<FormState>({
     address: "",
@@ -48,6 +65,9 @@ export default function CheckoutPage() {
     postal: "",
     discountCode: "",
     paymentTermId: "",
+    shippingMethodCode: "",
+    montageRequested: false,
+    montageNote: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -55,21 +75,63 @@ export default function CheckoutPage() {
   useEffect(() => {
     void fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d: { user: Me }) => setMe(d.user));
+      .then((d: { user: Me }) => {
+        setMe(d.user);
+        if (d.user?.defaultPaymentTermId) {
+          setForm((f) => ({
+            ...f,
+            paymentTermId: f.paymentTermId || d.user!.defaultPaymentTermId!,
+          }));
+        }
+      });
     void fetch("/api/payment-terms")
       .then((r) => r.json())
       .then((d: { paymentTerms: PaymentTerm[] }) => {
         setTerms(d.paymentTerms);
-        if (d.paymentTerms[0]) {
-          setForm((f) => ({
-            ...f,
-            paymentTermId: f.paymentTermId || d.paymentTerms[0].id,
-          }));
-        }
       });
   }, []);
 
+  useEffect(() => {
+    void fetch(`/api/shipping?subtotal=${subtotalCents}`)
+      .then((r) => r.json())
+      .then((d: { shippingMethods: ShippingMethod[] }) => {
+        setShipping(d.shippingMethods);
+        setForm((f) => ({
+          ...f,
+          shippingMethodCode:
+            f.shippingMethodCode || d.shippingMethods[0]?.code || "",
+        }));
+      });
+  }, [subtotalCents]);
+
+  useEffect(() => {
+    if (!me?.requiresPrepaid || !terms.length) return;
+    const vorkasse = terms.find((t) => t.code === "VORKASSE");
+    if (vorkasse) {
+      setForm((f) => ({ ...f, paymentTermId: vorkasse.id }));
+    }
+  }, [me?.requiresPrepaid, terms]);
+
+  useEffect(() => {
+    if (me?.requiresPrepaid) return;
+    if (me?.defaultPaymentTermId) {
+      setForm((f) => ({
+        ...f,
+        paymentTermId: me.defaultPaymentTermId || f.paymentTermId,
+      }));
+    } else if (terms[0] && !form.paymentTermId) {
+      setForm((f) => ({ ...f, paymentTermId: terms[0].id }));
+    }
+  }, [me?.defaultPaymentTermId, me?.requiresPrepaid, terms, form.paymentTermId]);
+
   const selectedTerm = terms.find((t) => t.id === form.paymentTermId);
+  const selectedShipping = shipping.find(
+    (s) => s.code === form.shippingMethodCode,
+  );
+  const estimatedTotal = useMemo(
+    () => subtotalCents + (selectedShipping?.cents ?? 0),
+    [subtotalCents, selectedShipping],
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -83,6 +145,10 @@ export default function CheckoutPage() {
     }
     if (!form.paymentTermId) {
       setError("Bitte Zahlungsbedingung wählen.");
+      return;
+    }
+    if (!form.shippingMethodCode) {
+      setError("Bitte Versandart wählen.");
       return;
     }
 
@@ -99,6 +165,9 @@ export default function CheckoutPage() {
           country: "DE",
           discountCode: form.discountCode || null,
           paymentTermId: form.paymentTermId,
+          shippingMethodCode: form.shippingMethodCode,
+          montageRequested: form.montageRequested,
+          montageNote: form.montageNote || null,
           items: items.map((item) => ({
             productId: item.product.id,
             quantity: item.quantity,
@@ -113,7 +182,10 @@ export default function CheckoutPage() {
           message?: string;
           totalCents: number;
           discountCents: number;
+          shippingCents?: number;
           paymentTermLabel?: string | null;
+          shippingMethodLabel?: string | null;
+          partialStock?: string[];
         };
       };
       if (!res.ok || !data.order) {
@@ -127,7 +199,10 @@ export default function CheckoutPage() {
         message: data.order.message,
         totalCents: data.order.totalCents,
         discountCents: data.order.discountCents,
+        shippingCents: data.order.shippingCents,
         paymentTermLabel: data.order.paymentTermLabel,
+        shippingMethodLabel: data.order.shippingMethodLabel,
+        partialStock: data.order.partialStock,
       });
     } catch {
       setError("Netzwerkfehler beim Checkout.");
@@ -152,11 +227,22 @@ export default function CheckoutPage() {
             {placed.discountCents > 0
               ? ` · Rabatt ${formatMoney(placed.discountCents)}`
               : ""}
+            {placed.shippingCents
+              ? ` · Versand ${formatMoney(placed.shippingCents)}`
+              : ""}
             {" · "}
             Summe {formatMoney(placed.totalCents)}
           </p>
           {placed.paymentTermLabel ? (
             <p className="muted">Zahlungsbedingung: {placed.paymentTermLabel}</p>
+          ) : null}
+          {placed.shippingMethodLabel ? (
+            <p className="muted">Versand: {placed.shippingMethodLabel}</p>
+          ) : null}
+          {placed.partialStock?.length ? (
+            <p className="muted">
+              Teillieferung: {placed.partialStock.join("; ")}
+            </p>
           ) : null}
           <p className="muted">{placed.message}</p>
           <div className="cta-row">
@@ -172,6 +258,10 @@ export default function CheckoutPage() {
     );
   }
 
+  const visibleTerms = me?.requiresPrepaid
+    ? terms.filter((t) => t.code === "VORKASSE")
+    : terms;
+
   return (
     <div className="checkout-page">
       <header className="checkout-steps" aria-label="Bestellschritte">
@@ -185,7 +275,7 @@ export default function CheckoutPage() {
           <p className="eyebrow">Bestellung</p>
           <h1>Kasse</h1>
           <p className="muted">
-            Lieferadresse, Zahlungsbedingung und optionaler Rabattcode.
+            Lieferadresse, Zahlungsbedingung, Versand und optional Montage.
           </p>
         </div>
       </div>
@@ -216,7 +306,14 @@ export default function CheckoutPage() {
         <div className="checkout">
           <form className="panel store-panel" onSubmit={handleSubmit} noValidate>
             <h2>Lieferung · {me.companyName}</h2>
-            <p className="muted">Besteller: {me.name} · {me.email}</p>
+            <p className="muted">
+              Besteller: {me.name} · {me.email}
+            </p>
+            {me.requiresPrepaid ? (
+              <p className="muted">
+                Für Ihr Konto ist Vorauskasse vorgeschrieben.
+              </p>
+            ) : null}
             <div className="form-grid">
               <label>
                 Straße und Hausnummer
@@ -256,8 +353,9 @@ export default function CheckoutPage() {
                     setForm((f) => ({ ...f, paymentTermId: e.target.value }))
                   }
                   required
+                  disabled={Boolean(me.requiresPrepaid)}
                 >
-                  {terms.map((term) => (
+                  {visibleTerms.map((term) => (
                     <option key={term.id} value={term.id}>
                       {term.name} — {term.depositPercent}/{term.balancePercent}
                     </option>
@@ -266,6 +364,63 @@ export default function CheckoutPage() {
               </label>
               {selectedTerm ? (
                 <p className="muted">{selectedTerm.description}</p>
+              ) : null}
+              <label>
+                Versandart
+                <select
+                  value={form.shippingMethodCode}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      shippingMethodCode: e.target.value,
+                    }))
+                  }
+                  required
+                >
+                  {shipping.map((method) => (
+                    <option key={method.code} value={method.code}>
+                      {method.name} —{" "}
+                      {method.cents === 0
+                        ? "kostenfrei"
+                        : formatMoney(method.cents)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedShipping ? (
+                <p className="muted">{selectedShipping.description}</p>
+              ) : null}
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.montageRequested}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      montageRequested: e.target.checked,
+                    }))
+                  }
+                />
+                Montage / Installation mitbestellen
+              </label>
+              {form.montageRequested ? (
+                <label>
+                  Hinweis zur Montage
+                  <textarea
+                    rows={3}
+                    value={form.montageNote}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, montageNote: e.target.value }))
+                    }
+                    placeholder="Wunschtermin, Standort, Ansprechpartner…"
+                  />
+                </label>
               ) : null}
               <label>
                 Rabattcode (optional)
@@ -287,7 +442,7 @@ export default function CheckoutPage() {
                   ? "Firma noch nicht freigeschaltet"
                   : submitting
                     ? "Wird eingereicht…"
-                    : `Bestellung zur Freigabe senden · ${formatMoney(subtotalCents)}`}
+                    : `Bestellung zur Freigabe senden · ${formatMoney(estimatedTotal)}`}
               </button>
             </div>
           </form>
@@ -302,10 +457,28 @@ export default function CheckoutPage() {
                 <span>{formatMoney(product.priceCents * quantity)}</span>
               </div>
             ))}
-            <div className="summary-line summary-line--total">
+            <div className="summary-line">
               <span>Zwischensumme</span>
               <span>{formatMoney(subtotalCents)}</span>
             </div>
+            <div className="summary-line">
+              <span>Versand</span>
+              <span>
+                {selectedShipping
+                  ? selectedShipping.cents === 0
+                    ? "kostenfrei"
+                    : formatMoney(selectedShipping.cents)
+                  : "—"}
+              </span>
+            </div>
+            <div className="summary-line summary-line--total">
+              <span>Geschätzt</span>
+              <span>{formatMoney(estimatedTotal)}</span>
+            </div>
+            <p className="muted">
+              Bei Teilbestand wird der verfügbare Anteil sofort reserviert; der
+              Rest geht in Nachlieferung — die Bestellung wird nicht blockiert.
+            </p>
             <Link href="/warenkorb" className="text-btn">
               Warenkorb bearbeiten
             </Link>

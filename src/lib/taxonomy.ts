@@ -72,6 +72,8 @@ export const PHT_NAV = [
   { href: "/shop", label: "Hygienelösungen" },
   ...PHT_PILLARS.map((p) => ({ href: p.href, label: p.name })),
   { href: PHT_SERVICE.href, label: PHT_SERVICE.name },
+  { href: "/schnellbestellung", label: "Schnellbestellung" },
+  { href: "/angebot", label: "Angebot" },
 ] as const;
 
 export const PHT_BRAND = {
