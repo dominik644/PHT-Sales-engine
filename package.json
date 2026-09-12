@@ -12,6 +12,10 @@
     "db:reset": "prisma migrate reset --force",
     "erp:demo": "node scripts/demo-erp-server.mjs",
     "deploy:demo": "vercel deploy --temporary --yes",
+    "ops:check-env": "node scripts/check-env.mjs",
+    "ops:backup": "node scripts/backup-db.mjs",
+    "ops:smoke": "node scripts/ops-smoke.mjs",
+    "ops:audit": "npm audit --omit=dev",
     "postinstall": "prisma generate"
   },
   "prisma": {
