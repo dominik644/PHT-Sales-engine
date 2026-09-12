@@ -1,1 +1,91 @@
-# PHT-Sales-engine
+# PHT Hygiene Webshop — DEMO
+
+**Status: Demo-Version.** Erst Struktur und Abläufe absichern, danach Live.
+
+Eigenständig — **kein** Mastertool. Eigene App, DB, Admin, Deploy.
+ERP aktuell: **Mock** (kein echtes Business Central nötig).
+
+## Feste Demo-URL (wie Mastertool)
+
+**Live:** [`https://pht-webshop.vercel.app`](https://pht-webshop.vercel.app)  
+(wie Mastertool: `https://pht-mastertool.vercel.app`)
+
+- Vercel-Projekt: `pht-powertool/pht-webshop`
+- GitHub verbunden → Pushes erzeugen Deployments
+- Demo-Leitfaden: [`/demo`](https://pht-webshop.vercel.app/demo)
+- Status bleibt Demo (`DEMO_MODE=true`), kein Live-Go
+
+Env in Vercel (bereits gesetzt):
+
+| Name | Wert |
+|------|------|
+| `DEMO_MODE` | `true` |
+| `DATABASE_URL` | `file:/tmp/pht-webshop-demo.db` |
+| `ADMIN_PASSWORD` | (gesetzt) |
+| `SESSION_SECRET` | (gesetzt) |
+| `ERP_PROVIDER` | `mock` |
+
+
+
+## Shop-Struktur (Demo — wie pht.group)
+
+```
+Start (/)
+├── Hygienelösungen (/shop)
+│   ├── Personalhygiene      Hygieneschleusen · Hygienetechnik · Sozialraum
+│   ├── Betriebshygiene      Behälter · Schaum · Farbsystem · Einrichtung
+│   ├── Prozesstechnik       Portionieren · Heben/Kippen · Fördern
+│   └── Service              Wartung · Kundendienst
+├── Artikel (/product/[slug])
+├── Warenkorb (/warenkorb)
+├── Kasse (/checkout)
+└── Mein Konto (/account)
+
+Design: Farben, Logo und Bilder von pht.group (Blau #17417D, Rot #DD0B30)
+```
+
+## Demo starten
+
+```bash
+cp .env.example .env
+npm install
+npx prisma db push
+npm run db:seed
+npm run dev
+```
+
+Shop: http://localhost:3000
+
+### Demo-Logins (nach Seed)
+
+| Rolle | E-Mail | Passwort |
+|-------|--------|----------|
+| Produktionsleiter | produktion@mueller-fertigung.example | demo-b2b-1234 |
+| Einkauf | einkauf@mueller-fertigung.example | demo-b2b-1234 |
+| Firmen-Admin | admin@mueller-fertigung.example | demo-b2b-1234 |
+
+- Rabatt: `PHT-B2B-10`
+- Admin: `/admin` · Passwort aus `ADMIN_PASSWORD`
+
+## Demo-Walkthrough (Struktur prüfen)
+
+1. Startseite → Kategorie wählen oder Suche
+2. Artikel öffnen → Menge → **In den Warenkorb**
+3. Warenkorb → **Zur Kasse**
+4. Als B2B anmelden → Adresse + Zahlungsbedingung → absenden
+5. Als Produktionsleiter freigeben (`/account`)
+6. Als Einkauf freigeben → Mock-ERP legt Auftrag + Rechnung an
+7. Auftrag in Mein Konto prüfen
+
+## Was Demo bewusst noch nicht ist
+
+- Kein produktiver BC-Write
+- Demo-Artikel/Bilder (Platzhalter bis echter Katalog)
+- Vercel-Demo nutzt SQLite in `/tmp` (Seed aus `data/demo.db`) — Daten können nach Cold-Start zurückgesetzt werden
+
+## Live später (erst wenn Demo passt)
+
+1. Echte Produkt-/Preisdaten
+2. Persistente DB (Postgres/Turso) statt `/tmp`-SQLite
+3. `ERP_PROVIDER=business-central` + Sandbox-Test
+4. `DEMO_MODE=false`
