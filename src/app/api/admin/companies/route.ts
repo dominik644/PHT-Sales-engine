@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
       defaultPaymentTermId:
         body.defaultPaymentTermId === undefined
           ? undefined
-          : body.defaultPaymentTermId,
+          : body.defaultPaymentTermId || null,
       priceGroupId:
         body.priceGroupId === undefined ? undefined : body.priceGroupId,
       requiresPrepaid:

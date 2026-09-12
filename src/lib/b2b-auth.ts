@@ -2,6 +2,7 @@ import { hash, compare } from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { getDemoMode } from "@/lib/env";
 
 export { roleLabel } from "@/lib/role-labels";
 
@@ -57,11 +58,12 @@ export async function createCustomerSession(user: SessionUser) {
     .setExpirationTime("12h")
     .sign(getSessionSecret());
 
+  // Secure nur im echten Go-live (HTTPS). DEMO_MODE erlaubt lokale HTTP-Smokes.
   const jar = await cookies();
   jar.set(CUSTOMER_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" && !getDemoMode(),
     path: "/",
     maxAge: 60 * 60 * 12,
   });
