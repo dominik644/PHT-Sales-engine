@@ -37,9 +37,10 @@ export function AddToCartButton({
         type="button"
         className="btn btn--primary"
         onClick={() => {
-          addItem(product, qty);
-          openCart();
+          const ok = addItem(product, qty);
+          if (ok) openCart();
         }}
+        disabled={product.priceCents == null}
       >
         {label}
       </button>

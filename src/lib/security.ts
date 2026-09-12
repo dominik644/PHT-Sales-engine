@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { getDemoMode } from "@/lib/env";
 
 const SESSION_COOKIE = "pht_admin_session";
 
@@ -32,7 +33,7 @@ export async function createAdminSession() {
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" && !getDemoMode(),
     path: "/",
     maxAge: 60 * 60 * 8,
   });

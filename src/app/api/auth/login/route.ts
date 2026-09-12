@@ -37,6 +37,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ungültige Anmeldedaten" }, { status: 401 });
   }
 
+  // Vorherige Session verwerfen, damit Rollenwechsel (Produktion → Einkauf)
+  // nicht mit einem alten Cookie weiterläuft.
+  await destroyCustomerSession();
   await createCustomerSession({
     id: user.id,
     email: user.email,

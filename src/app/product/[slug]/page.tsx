@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { ProductGallery } from "@/components/ProductGallery";
 import { ProductCard } from "@/components/ProductCard";
-import { getSessionUser } from "@/lib/b2b-auth";
+import { getFreshSessionUser } from "@/lib/b2b-auth";
 import { getProductBySlug, listActiveProducts } from "@/lib/catalog";
 import { formatMoney } from "@/lib/money";
 import { formatNet } from "@/lib/pricing-display";
@@ -33,7 +33,7 @@ export default async function ProductPage({
   let product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const session = await getSessionUser();
+  const session = await getFreshSessionUser();
   const showPrice = Boolean(session);
   const companyId =
     session?.companyStatus === "active" ? session.companyId : null;
@@ -199,11 +199,16 @@ export default async function ProductPage({
           ) : null}
 
           <div className="product-detail__actions">
-            {product.stock > 0 ? (
+            {product.stock <= 0 ? (
+              <button type="button" className="btn btn--ink" disabled>
+                Nicht lieferbar
+              </button>
+            ) : showPrice ? (
               <AddToCartButton
                 product={{
                   id: product.id,
                   slug: product.slug,
+                  sku: product.sku,
                   name: product.name,
                   priceCents: product.priceCents,
                   image: product.image,
@@ -211,15 +216,10 @@ export default async function ProductPage({
                 }}
               />
             ) : (
-              <button type="button" className="btn btn--ink" disabled>
-                Nicht lieferbar
-              </button>
-            )}
-            {!showPrice ? (
-              <Link href="/login" className="btn btn--ink">
-                Anmelden für Preise
+              <Link href="/login" className="btn btn--primary">
+                Anmelden zum Bestellen
               </Link>
-            ) : null}
+            )}
           </div>
         </div>
       </article>

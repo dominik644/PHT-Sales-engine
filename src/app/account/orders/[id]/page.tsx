@@ -69,22 +69,62 @@ export default function OrderDetailPage() {
   const { addItem } = useCart();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [reorderMsg, setReorderMsg] = useState<string | null>(null);
+  const [acting, setActing] = useState(false);
+
+  async function reload() {
+    if (!params.id) return;
+    const res = await fetch(`/api/account/orders/${params.id}`);
+    if (!res.ok) throw new Error("Auftrag nicht gefunden");
+    const data = (await res.json()) as { order: OrderDetail };
+    setOrder(data.order);
+  }
 
   useEffect(() => {
     if (!params.id) return;
-    void fetch(`/api/account/orders/${params.id}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Auftrag nicht gefunden");
-        return res.json() as Promise<{ order: OrderDetail }>;
-      })
-      .then((data) => setOrder(data.order))
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "Fehler"),
-      );
+    void reload().catch((err: unknown) =>
+      setError(err instanceof Error ? err.message : "Fehler"),
+    );
   }, [params.id]);
 
-  if (error) {
+  async function decide(decision: "approved" | "rejected") {
+    if (!order) return;
+    setActing(true);
+    setActionMsg(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/account/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id, decision }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        order?: OrderDetail;
+      };
+      if (!res.ok) {
+        setError(data.error ?? "Freigabe fehlgeschlagen");
+        return;
+      }
+      if (data.order?.status === "awaiting_purchasing_approval") {
+        setActionMsg(
+          "An Einkauf übergeben. Der Auftrag bleibt unter Konto → Freigabe-Pipeline sichtbar.",
+        );
+      } else if (decision === "approved") {
+        setActionMsg("Freigabe gespeichert.");
+      } else {
+        setActionMsg("Auftrag abgelehnt.");
+      }
+      await reload();
+    } catch {
+      setError("Netzwerkfehler bei der Freigabe.");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  if (error && !order) {
     return (
       <div className="section">
         <p className="form-error">{error}</p>
@@ -116,19 +156,23 @@ export default function OrderDetailPage() {
           product?: {
             id: string;
             slug: string;
+            sku?: string;
             name: string;
-            priceCents: number;
+            priceCents: number | null;
             image: string;
+            minOrderQty?: number;
           };
         };
-        if (!res.ok || !data.product) continue;
+        if (!res.ok || !data.product || data.product.priceCents == null) continue;
         addItem(
           {
             id: data.product.id,
             slug: data.product.slug,
+            sku: data.product.sku,
             name: data.product.name,
             priceCents: data.product.priceCents,
             image: data.product.image,
+            minOrderQty: data.product.minOrderQty,
           },
           item.quantity,
         );
@@ -156,6 +200,26 @@ export default function OrderDetailPage() {
           </p>
         </div>
         <div className="cta-row">
+          {order.canApprove ? (
+            <>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={acting}
+                onClick={() => void decide("approved")}
+              >
+                {acting ? "…" : "Freigeben"}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ink"
+                disabled={acting}
+                onClick={() => void decide("rejected")}
+              >
+                Ablehnen
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className="btn btn--primary"
@@ -168,6 +232,8 @@ export default function OrderDetailPage() {
           </Link>
         </div>
       </header>
+      {actionMsg ? <div className="success-banner">{actionMsg}</div> : null}
+      {error ? <p className="form-error">{error}</p> : null}
       {reorderMsg ? <p className="muted">{reorderMsg}</p> : null}
 
       <section className="admin-grid">

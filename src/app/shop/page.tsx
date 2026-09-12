@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
-import { getSessionUser } from "@/lib/b2b-auth";
+import { getFreshSessionUser } from "@/lib/b2b-auth";
 import { listActiveProducts, listCategories } from "@/lib/catalog";
 import { applyCompanyListPrices } from "@/lib/pricing";
 import { PHT_PILLARS, PHT_SERVICE } from "@/lib/taxonomy";
@@ -38,7 +38,7 @@ export default async function ShopPage({
   const sort =
     sp.sort === "price-asc" || sp.sort === "price-desc" ? sp.sort : "name";
 
-  const session = await getSessionUser();
+  const session = await getFreshSessionUser();
   const showPrice = Boolean(session);
   const companyId =
     session?.companyStatus === "active" ? session.companyId : null;

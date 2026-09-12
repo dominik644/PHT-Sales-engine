@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/b2b-auth";
+import { getFreshSessionUser } from "@/lib/b2b-auth";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DokumentePage() {
-  const user = await getSessionUser();
+  const user = await getFreshSessionUser();
   if (!user) {
     redirect("/login?next=/dokumente");
   }

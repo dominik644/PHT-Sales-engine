@@ -204,11 +204,18 @@ export function AdminB2BPanel() {
     await load();
   }
 
-  async function setCompanyTerm(companyId: string, defaultPaymentTermId: string) {
+  async function setCompanyTerm(
+    companyId: string,
+    defaultPaymentTermId: string,
+  ) {
     const res = await fetch("/api/admin/companies", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyId, defaultPaymentTermId }),
+      body: JSON.stringify({
+        companyId,
+        // leerer Select → null (nicht ""), sonst Prisma-FK-Fehler
+        defaultPaymentTermId: defaultPaymentTermId || null,
+      }),
     });
     if (!res.ok) {
       setMessage("Zahlungsbedingung konnte nicht gesetzt werden");

@@ -43,7 +43,7 @@ export default function AngebotPage() {
           const match = byId.get(item.product.id);
           return {
             productId: item.product.id,
-            sku: match?.sku ?? item.product.slug,
+            sku: match?.sku ?? item.product.sku ?? item.product.slug,
             name: item.product.name,
             quantity: item.quantity,
             note: "",

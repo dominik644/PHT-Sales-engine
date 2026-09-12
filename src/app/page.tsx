@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { StoreHero } from "@/components/StoreHero";
-import { getSessionUser } from "@/lib/b2b-auth";
+import { getFreshSessionUser } from "@/lib/b2b-auth";
 import { listActiveProducts } from "@/lib/catalog";
 import { applyCompanyListPrices } from "@/lib/pricing";
 import { PHT_PILLARS, PHT_SERVICE } from "@/lib/taxonomy";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const [productsRaw, session] = await Promise.all([
     listActiveProducts({ sort: "name" }),
-    getSessionUser(),
+    getFreshSessionUser(),
   ]);
   const showPrice = Boolean(session);
   const companyId =

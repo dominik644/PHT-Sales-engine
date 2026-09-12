@@ -63,7 +63,7 @@ export function CartDrawer() {
                       <Link href={`/product/${product.slug}`} onClick={closeCart}>
                         {product.name}
                       </Link>
-                      <span>{formatMoney(product.priceCents * quantity)}</span>
+                      <span>{(product.priceCents == null ? "—" : formatMoney(product.priceCents * quantity))}</span>
                     </div>
                     <div className="cart-line__controls">
                       <div className="qty">

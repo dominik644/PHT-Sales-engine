@@ -59,14 +59,22 @@ const statusLabel: Record<string, string> = {
 
 type Filter = "all" | "open" | "history";
 
+function nextActorLabel(status: string): string | null {
+  if (status === "awaiting_production_approval") return "Produktionsleiter";
+  if (status === "awaiting_purchasing_approval") return "Einkauf";
+  return null;
+}
+
 export default function AccountPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [pipeline, setPipeline] = useState<OrderRow[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ephemeralDemo, setEphemeralDemo] = useState(false);
 
   const load = useCallback(async () => {
     const meRes = await fetch("/api/auth/me");
@@ -82,7 +90,12 @@ export default function AccountPage() {
     if (filter === "history") params.set("status", "history");
     if (query.trim()) params.set("q", query.trim());
 
-    const ordersRes = await fetch(`/api/account/orders?${params.toString()}`);
+    // Historie-Filter und Freigabe-Pipeline getrennt laden — sonst verschwinden
+    // Einkaufs-Freigaben, sobald „Abgeschlossen“ aktiv ist.
+    const [ordersRes, pipelineRes] = await Promise.all([
+      fetch(`/api/account/orders?${params.toString()}`),
+      fetch("/api/account/orders?status=open"),
+    ]);
     if (ordersRes.ok) {
       const data = (await ordersRes.json()) as {
         orders: OrderRow[];
@@ -91,15 +104,38 @@ export default function AccountPage() {
       setOrders(data.orders);
       setStats(data.stats);
     }
+    if (pipelineRes.ok) {
+      const data = (await pipelineRes.json()) as { orders: OrderRow[] };
+      setPipeline(data.orders);
+    }
   }, [filter, query]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    void fetch("/api/ready")
+      .then((r) => r.json())
+      .then((d: { serverlessDemoDb?: boolean }) => {
+        setEphemeralDemo(Boolean(d.serverlessDemoDb));
+      })
+      .catch(() => undefined);
+  }, []);
+
   const pendingApprovals = useMemo(
-    () => orders.filter((o) => o.canApprove),
-    [orders],
+    () => pipeline.filter((o) => o.canApprove),
+    [pipeline],
+  );
+
+  const waitingPipeline = useMemo(
+    () =>
+      pipeline.filter((o) =>
+        ["awaiting_production_approval", "awaiting_purchasing_approval"].includes(
+          o.status,
+        ),
+      ),
+    [pipeline],
   );
 
   async function decide(orderId: string, decision: "approved" | "rejected") {
@@ -118,6 +154,20 @@ export default function AccountPage() {
     if (decision === "approved" && data.order?.status === "confirmed") {
       setMessage(
         `Freigabe abgeschlossen. ERP Auftrag ${data.order.erpOrderId}, Rechnung ${data.order.invoice?.number ?? data.order.erpInvoiceId}`,
+      );
+    } else if (
+      decision === "approved" &&
+      data.order?.status === "awaiting_purchasing_approval"
+    ) {
+      setMessage(
+        `An Einkauf übergeben (${data.order.number}). Der Auftrag bleibt in der Freigabe-Pipeline sichtbar — bitte als Einkäufer neu anmelden und „Offene Freigaben“ prüfen.`,
+      );
+    } else if (
+      decision === "approved" &&
+      data.order?.status === "approved"
+    ) {
+      setMessage(
+        "Finale Einkaufsfreigabe gespeichert. ERP-Sync läuft bzw. kann bei Fehler erneut angestoßen werden.",
       );
     } else {
       setMessage(
@@ -261,12 +311,27 @@ export default function AccountPage() {
         </section>
       ) : null}
 
+      {ephemeralDemo ? (
+        <div className="panel" style={{ marginBottom: "1rem", borderColor: "#c45c26" }}>
+          <p>
+            <strong>Demo-Hinweis:</strong> Diese Umgebung speichert Aufträge in
+            einer lokalen SQLite-Datei je Server-Instanz. Nach dem Wechsel
+            Produktionsleiter → Einkauf kann ein Auftrag „verschwinden“, wenn
+            eine andere Instanz antwortet. Für stabile Freigaben bitte lokal
+            testen oder eine persistente Datenbank (Postgres/Turso) nutzen.
+          </p>
+        </div>
+      ) : null}
+
       {message ? <div className="success-banner">{message}</div> : null}
       {error ? <p className="form-error">{error}</p> : null}
 
       {pendingApprovals.length > 0 ? (
         <div className="panel" style={{ marginBottom: "1.25rem" }}>
-          <h2>Offene Freigaben ({pendingApprovals.length})</h2>
+          <h2>Ihre offenen Freigaben ({pendingApprovals.length})</h2>
+          <p className="muted">
+            Nur Aufträge, die Ihre aktuelle Rolle jetzt freigeben kann.
+          </p>
           <div className="admin-table">
             {pendingApprovals.map((order) => (
               <OrderCard
@@ -276,6 +341,70 @@ export default function AccountPage() {
                 onReject={() => decide(order.id, "rejected")}
               />
             ))}
+          </div>
+        </div>
+      ) : (
+        <div className="panel" style={{ marginBottom: "1.25rem" }}>
+          <h2>Ihre offenen Freigaben</h2>
+          <p className="muted">
+            Keine Freigabe für Ihre Rolle ({me.roleLabel}). Prüfen Sie die
+            Pipeline unten — ggf. wartet der Auftrag auf eine andere Rolle.
+          </p>
+        </div>
+      )}
+
+      {waitingPipeline.length > 0 ? (
+        <div className="panel" style={{ marginBottom: "1.25rem" }}>
+          <h2>Freigabe-Pipeline ({waitingPipeline.length})</h2>
+          <p className="muted">
+            Alle firmenweiten Aufträge in Freigabe — unabhängig vom Filter
+            „Abgeschlossen“. So bleibt ein an den Einkauf übergebener Auftrag
+            sichtbar.
+          </p>
+          <div className="admin-table">
+            {waitingPipeline.map((order) => {
+              const actor = nextActorLabel(order.status);
+              return (
+                <div key={order.id} className="admin-row history-row">
+                  <div>
+                    <div className="history-row__title">
+                      <strong>{order.number}</strong>
+                      <span className="muted">
+                        {statusLabel[order.status] ?? order.status}
+                      </span>
+                    </div>
+                    <p className="muted">
+                      Nächste Rolle: <strong>{actor ?? "—"}</strong>
+                      {order.canApprove ? " · Sie können jetzt freigeben" : ""}
+                    </p>
+                    <Link href={`/account/orders/${order.id}`} className="text-btn">
+                      Details
+                    </Link>
+                  </div>
+                  <div className="admin-row__meta">
+                    <span>{formatMoney(order.totalCents)}</span>
+                    {order.canApprove ? (
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button
+                          type="button"
+                          className="btn btn--primary"
+                          onClick={() => decide(order.id, "approved")}
+                        >
+                          Freigeben
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--ink"
+                          onClick={() => decide(order.id, "rejected")}
+                        >
+                          Ablehnen
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}

@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -28,8 +26,9 @@ export default function LoginPage() {
       setError(data.error ?? "Login fehlgeschlagen");
       return;
     }
-    router.push("/account");
-    router.refresh();
+    // Full reload: Session-Cookie und Account-Daten sicher neu laden
+    // (wichtig beim Wechsel Produktionsleiter ↔ Einkauf).
+    window.location.assign("/account");
   }
 
   return (

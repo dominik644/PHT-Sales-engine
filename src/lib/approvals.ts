@@ -52,32 +52,51 @@ export async function approveOrder(options: {
   const next = nextApprovalStatus(order.status);
   if (!next) throw new Error("INVALID_STATUS");
 
-  await prisma.orderApproval.create({
-    data: {
-      orderId: order.id,
-      userId: options.userId,
-      role: actingRole,
-      decision: "approved",
-      note: options.note,
-    },
-  });
+  // Approval row + Statuswechsel atomar — sonst kann die nächste Rolle
+  // nach Reload einen „verschwundenen“ Auftrag sehen.
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.orderApproval.create({
+      data: {
+        orderId: order.id,
+        userId: options.userId,
+        role: actingRole,
+        decision: "approved",
+        note: options.note,
+      },
+    });
 
-  await prisma.orderEvent.create({
-    data: {
-      orderId: order.id,
-      type: "approved_step",
-      message: `Freigabe ${actingRole} → ${next}`,
-    },
-  });
+    await tx.orderEvent.create({
+      data: {
+        orderId: order.id,
+        type: "approved_step",
+        message: `Freigabe ${actingRole} → ${next}`,
+      },
+    });
 
-  const updated = await prisma.order.update({
-    where: { id: order.id },
-    data: { status: next },
+    return tx.order.update({
+      where: { id: order.id },
+      data: { status: next },
+    });
   });
 
   if (next === "approved") {
-    // Nach finaler Einkaufsfreigabe: Auftrag + Rechnung im ERP anlegen
-    await pushOrderAndInvoiceToErp(order.id);
+    // Freigabe ist verbindlich — ERP-Fehler dürfen die API nicht als
+    // fehlgeschlagene Freigabe zurückgeben (Retry über Admin möglich).
+    try {
+      await pushOrderAndInvoiceToErp(order.id);
+      return prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Unbekannter ERP-Fehler";
+      await prisma.orderEvent.create({
+        data: {
+          orderId: order.id,
+          type: "erp_failed_after_approval",
+          message: `Freigabe ok, ERP-Sync fehlgeschlagen: ${detail}`,
+        },
+      });
+      return prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    }
   }
 
   return updated;

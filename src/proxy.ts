@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getDemoMode } from "@/lib/env";
 import { createRequestId } from "@/lib/logger";
 
 export function proxy(request: NextRequest) {
@@ -25,6 +26,7 @@ export function proxy(request: NextRequest) {
   response.headers.set("X-DNS-Prefetch-Control", "off");
 
   const isProd = process.env.NODE_ENV === "production";
+  const goLiveHardening = isProd && !getDemoMode();
   const scriptSrc = isProd
     ? "script-src 'self' 'unsafe-inline'"
     : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
@@ -42,11 +44,11 @@ export function proxy(request: NextRequest) {
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      ...(isProd ? ["upgrade-insecure-requests"] : []),
+      ...(goLiveHardening ? ["upgrade-insecure-requests"] : []),
     ].join("; "),
   );
 
-  if (isProd) {
+  if (goLiveHardening) {
     response.headers.set(
       "Strict-Transport-Security",
       "max-age=63072000; includeSubDomains; preload",
