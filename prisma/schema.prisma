@@ -155,6 +155,7 @@ model Company {
   discounts             Discount[]
   quoteRequests         QuoteRequest[]
   serviceRequests       ServiceRequest[]
+  supportTickets        SupportTicket[]
   documents             CustomerDocument[]
   assets                CustomerAsset[]
 }
@@ -174,6 +175,7 @@ model User {
   ordersPlaced Order[]         @relation("OrderRequester")
   approvals    OrderApproval[]
   quoteRequests QuoteRequest[] @relation("QuoteRequester")
+  supportTickets SupportTicket[] @relation("TicketRequester")
 }
 
 model Discount {
@@ -237,7 +239,9 @@ model Order {
   approvals           OrderApproval[]
   invoice             Invoice?
   serviceRequests     ServiceRequest[]
+  supportTickets      SupportTicket[]
   documents           CustomerDocument[]
+  acceptedFromQuote   QuoteRequest?      @relation("QuoteAcceptedOrder")
 }
 
 model OrderItem {
@@ -290,19 +294,25 @@ model Invoice {
 }
 
 model QuoteRequest {
-  id          String             @id @default(cuid())
-  number      String             @unique
-  companyId   String
-  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  requesterId String?
-  requester   User?              @relation("QuoteRequester", fields: [requesterId], references: [id])
+  id                String             @id @default(cuid())
+  number            String             @unique
+  companyId         String
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requesterId       String?
+  requester         User?              @relation("QuoteRequester", fields: [requesterId], references: [id])
   /// open | in_progress | offered | accepted | rejected | expired
-  status      String             @default("open")
-  note        String             @default("")
-  validUntil  DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  items       QuoteRequestItem[]
+  status            String             @default("open")
+  note              String             @default("")
+  validUntil        DateTime?
+  offeredTotalCents Int?
+  offeredNote       String             @default("")
+  offeredAt         DateTime?
+  acceptedAt        DateTime?
+  acceptedOrderId   String?            @unique
+  acceptedOrder     Order?             @relation("QuoteAcceptedOrder", fields: [acceptedOrderId], references: [id])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  items             QuoteRequestItem[]
 }
 
 model QuoteRequestItem {
@@ -314,7 +324,29 @@ model QuoteRequestItem {
   sku            String
   name           String
   quantity       Int
+  /// Angebotspreis je Einheit (Cent), gesetzt wenn Status offered
+  unitCents      Int?
   note           String       @default("")
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  number      String   @unique
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requesterId String?
+  requester   User?    @relation("TicketRequester", fields: [requesterId], references: [id])
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id])
+  /// return | complaint | spare | other
+  type        String
+  subject     String
+  message     String
+  /// open | in_progress | waiting_customer | resolved | closed
+  status      String   @default("open")
+  adminNote   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ServiceRequest {

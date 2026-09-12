@@ -6,6 +6,8 @@ export function roleLabel(role: string): string {
       return "Einkauf";
     case "COMPANY_ADMIN":
       return "Firmen-Admin";
+    case "REQUESTER":
+      return "Anforderer";
     default:
       return role;
   }

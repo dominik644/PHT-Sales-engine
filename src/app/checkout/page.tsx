@@ -19,6 +19,7 @@ type FormState = {
 type Me = {
   name: string;
   email: string;
+  role?: string;
   companyName: string;
   companyStatus: string;
   requiresPrepaid?: boolean;
@@ -296,6 +297,23 @@ export default function CheckoutPage() {
             </Link>
             <Link href="/register" className="btn btn--ink">
               Firma registrieren
+            </Link>
+          </div>
+        </div>
+      ) : me.role === "REQUESTER" ? (
+        <div className="panel store-panel">
+          <h2>Keine Bestellberechtigung</h2>
+          <p className="muted">
+            Als Anforderer können Sie Warenkorb und Angebotsanfragen nutzen,
+            aber keine verbindlichen Bestellungen auslösen. Bitte Einkauf oder
+            Firmen-Admin.
+          </p>
+          <div className="cta-row">
+            <Link href="/angebot" className="btn btn--primary">
+              Angebot anfordern
+            </Link>
+            <Link href="/account" className="btn btn--ink">
+              Zum Kundenkonto
             </Link>
           </div>
         </div>
