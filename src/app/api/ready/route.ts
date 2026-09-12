@@ -27,6 +27,9 @@ export async function GET() {
         env: env.ok ? "ok" : "fail",
       },
       demoMode: getDemoMode(),
+      serverlessDemoDb:
+        process.env.VERCEL === "1" &&
+        (process.env.DATABASE_URL ?? "").startsWith("file:"),
       erpProvider: process.env.ERP_PROVIDER ?? "mock",
       latencyMs: Date.now() - started,
       ts: new Date().toISOString(),

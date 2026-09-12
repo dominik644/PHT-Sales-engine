@@ -52,27 +52,31 @@ export async function approveOrder(options: {
   const next = nextApprovalStatus(order.status);
   if (!next) throw new Error("INVALID_STATUS");
 
-  await prisma.orderApproval.create({
-    data: {
-      orderId: order.id,
-      userId: options.userId,
-      role: actingRole,
-      decision: "approved",
-      note: options.note,
-    },
-  });
+  // Approval row + Statuswechsel atomar — sonst kann die nächste Rolle
+  // nach Reload einen „verschwundenen“ Auftrag sehen.
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.orderApproval.create({
+      data: {
+        orderId: order.id,
+        userId: options.userId,
+        role: actingRole,
+        decision: "approved",
+        note: options.note,
+      },
+    });
 
-  await prisma.orderEvent.create({
-    data: {
-      orderId: order.id,
-      type: "approved_step",
-      message: `Freigabe ${actingRole} → ${next}`,
-    },
-  });
+    await tx.orderEvent.create({
+      data: {
+        orderId: order.id,
+        type: "approved_step",
+        message: `Freigabe ${actingRole} → ${next}`,
+      },
+    });
 
-  const updated = await prisma.order.update({
-    where: { id: order.id },
-    data: { status: next },
+    return tx.order.update({
+      where: { id: order.id },
+      data: { status: next },
+    });
   });
 
   if (next === "approved") {
